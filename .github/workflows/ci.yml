@@ -1,0 +1,114 @@
+name: CI / CD Security & Build Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  crypto_and_lint:
+    name: 🛡️ Análisis Estático y Pruebas Criptográficas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.x'
+          channel: 'stable'
+          cache: true
+
+      - name: Instalar Dependencias
+        run: |
+          cd client
+          flutter pub get
+
+      - name: Análisis de Código (Linter)
+        run: |
+          cd client
+          flutter analyze
+
+      - name: Pruebas Unitarias Automatizadas
+        run: |
+          cd client
+          flutter test
+
+  build_web:
+    name: 🌐 Compilación Web (Vercel / Cloudflare Pages)
+    runs-on: ubuntu-latest
+    needs: crypto_and_lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.x'
+          channel: 'stable'
+
+      - name: Compilar Flutter Web
+        run: |
+          cd client
+          flutter pub get
+          flutter build web --release --wasm
+
+      - name: Subir Artefacto Web
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-release
+          path: client/build/web
+
+  build_android:
+    name: 📱 Compilación Android APK
+    runs-on: ubuntu-latest
+    needs: crypto_and_lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.x'
+          channel: 'stable'
+
+      - name: Compilar APK Release
+        run: |
+          cd client
+          flutter pub get
+          flutter build apk --release
+
+      - name: Subir APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-apk
+          path: client/build/app/outputs/flutter-apk/app-release.apk
+
+  build_windows:
+    name: 🪟 Compilación Windows Desktop
+    runs-on: windows-latest
+    needs: crypto_and_lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.x'
+          channel: 'stable'
+
+      - name: Habilitar Desktop Windows y Compilar
+        run: |
+          cd client
+          flutter config --enable-windows-desktop
+          flutter pub get
+          flutter build windows --release
+
+      - name: Subir Artefacto Windows
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release-bundle
+          path: client/build/windows/x64/runner/Release/
