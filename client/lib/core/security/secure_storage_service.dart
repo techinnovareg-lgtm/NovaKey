@@ -68,6 +68,17 @@ class SecureStorageService {
     return await _storage.read(key: _keyEncryptedMek);
   }
 
+  static const String _keyLocalVaultItems = 'sec_local_vault_items';
+
+  /// Guarda los ítems cifrados en almacenamiento local (para modo offline o sin nube)
+  Future<void> saveLocalEncryptedVault(String jsonStr) async {
+    await _storage.write(key: _keyLocalVaultItems, value: jsonStr);
+  }
+
+  Future<String?> getLocalEncryptedVault() async {
+    return await _storage.read(key: _keyLocalVaultItems);
+  }
+
   /// Borra todas las claves locales al cerrar sesión
   Future<void> clearAll() async {
     await _storage.deleteAll();
