@@ -205,7 +205,6 @@ class VaultSyncService {
   Future<void> deleteItem(String id) async {
     final index = _cachedItems.indexWhere((e) => e.id == id);
     if (index >= 0) {
-      final itemToDelete = _cachedItems[index].copyWith(isDeleted: true);
       _cachedItems.removeAt(index);
       _vaultItemsController.add(_cachedItems);
 

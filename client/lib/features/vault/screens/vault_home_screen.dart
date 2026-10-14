@@ -40,11 +40,32 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> {
 
   void _copyToClipboard(String text, String label) {
     Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$label copiado al portapapeles. Se borrará en 30s por seguridad.'),
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                '$label copiado al portapapeles. Se borrará en 30s por seguridad.',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ],
+        ),
         duration: const Duration(seconds: 4),
-        backgroundColor: Colors.blueGrey.shade900,
+        backgroundColor: const Color(0xFF1E293B),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: Colors.blueAccent.withOpacity(0.4)),
+        ),
       ),
     );
 
@@ -240,7 +261,7 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.file_upload_outlined),
-            tooltip: 'Importar cuentas (.txt)',
+            tooltip: 'Importar cuentas (.txt / Excel)',
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(

@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../services/vault_sync_service.dart';
+import '../utils/excel_credentials_parser.dart';
 import '../utils/txt_credentials_parser.dart';
 
-/// Pantalla / Diálogo para cargar e importar archivos .txt de cuentas y contraseñas
+/// Pantalla para cargar e importar archivos .txt y Excel (.xlsx) de cuentas y contraseñas
 class TxtImportScreen extends StatefulWidget {
   final VaultSyncService syncService;
 
@@ -20,34 +21,51 @@ class _TxtImportScreenState extends State<TxtImportScreen> {
   bool _isProcessing = false;
   bool _obscurePasswords = true;
   String? _loadedFileName;
+  String _fileTypeDetected = ''; // 'txt' o 'excel'
 
-  Future<void> _pickTxtFile() async {
+  Future<void> _pickFile() async {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['txt'],
+        allowedExtensions: ['txt', 'xlsx', 'xls'],
         withData: true,
       );
 
       if (result != null && result.files.isNotEmpty) {
         final file = result.files.first;
-        String content = '';
+        final extension = file.extension?.toLowerCase() ?? '';
 
-        if (file.bytes != null) {
-          content = utf8.decode(file.bytes!);
+        if (extension == 'xlsx' || extension == 'xls') {
+          if (file.bytes != null) {
+            final items = ExcelCredentialsParser.parseBytes(file.bytes!);
+            setState(() {
+              _loadedFileName = file.name;
+              _fileTypeDetected = 'excel';
+              _parsedItems = items;
+              _textController.text =
+                  'Libro Excel importado: ${file.name}\nSe identificaron ${items.length} cuentas con sus columnas de credenciales.';
+            });
+          }
+        } else {
+          // Archivo de texto .txt
+          String content = '';
+          if (file.bytes != null) {
+            content = utf8.decode(file.bytes!);
+          }
+
+          setState(() {
+            _loadedFileName = file.name;
+            _fileTypeDetected = 'txt';
+            _textController.text = content;
+          });
+
+          _parseContent(content);
         }
-
-        setState(() {
-          _loadedFileName = file.name;
-          _textController.text = content;
-        });
-
-        _parseContent(content);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al leer archivo: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Error al procesar archivo: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -85,10 +103,23 @@ class _TxtImportScreenState extends State<TxtImportScreen> {
       }
 
       if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('✅ Se cifraron e importaron $importedCount cuentas a tu bóveda con éxito.'),
-            backgroundColor: Colors.green.shade800,
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.greenAccent),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    '✅ Se cifraron e importaron $importedCount cuentas a tu bóveda con éxito.',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF1E293B),
+            behavior: SnackBarBehavior.floating,
           ),
         );
         Navigator.of(context).pop();
@@ -108,7 +139,7 @@ class _TxtImportScreenState extends State<TxtImportScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Importar Cuentas (.txt)'),
+        title: const Text('Importar Cuentas (.txt / Excel)'),
         actions: [
           if (_parsedItems.isNotEmpty)
             IconButton(
@@ -135,27 +166,35 @@ class _TxtImportScreenState extends State<TxtImportScreen> {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    const Icon(Icons.description_rounded, size: 40, color: Colors.blueAccent),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.description_rounded, size: 36, color: Colors.blueAccent),
+                        const SizedBox(width: 10),
+                        Icon(Icons.table_chart_rounded, size: 36, color: Colors.green.shade400),
+                      ],
+                    ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Cargar Archivo de Cuentas',
+                      'Cargar Archivo de Cuentas (.txt o Excel)',
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Text(
-                      'Reconoce automáticamente formatos como:\nServicio    correo@ejemplo.com / contraseña\n            otrocorreo@ejemplo.com / contraseña',
+                      'Soporta archivos de texto (.txt) y hojas de cálculo (.xlsx, .xls).\nReconoce encabezados como Servicio, Usuario, Correo, Contraseña, Clave, etc.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
                     ElevatedButton.icon(
                       icon: const Icon(Icons.file_open_rounded),
-                      label: Text(_loadedFileName == null ? 'Seleccionar archivo .txt' : 'Archivo: $_loadedFileName'),
+                      label: Text(_loadedFileName == null ? 'Seleccionar archivo (.txt / .xlsx)' : 'Archivo: $_loadedFileName'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blueAccent,
                         foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                       ),
-                      onPressed: _pickTxtFile,
+                      onPressed: _pickFile,
                     ),
                   ],
                 ),
@@ -190,9 +229,27 @@ class _TxtImportScreenState extends State<TxtImportScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Cuentas Detectadas (${_parsedItems.length})',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  Row(
+                    children: [
+                      Text(
+                        'Cuentas Detectadas (${_parsedItems.length})',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      if (_fileTypeDetected.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: _fileTypeDetected == 'excel' ? Colors.green.shade900 : Colors.blue.shade900,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            _fileTypeDetected == 'excel' ? 'EXCEL' : 'TXT',
+                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   TextButton.icon(
                     icon: Icon(
