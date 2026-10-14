@@ -9,22 +9,24 @@ class BiometricService {
 
   /// Verifica si el hardware del dispositivo soporta biometría (Huella, Rostro, Windows Hello)
   Future<bool> isBiometricsSupported() async {
+    if (kIsWeb) return false;
     try {
       final canCheck = await _auth.canCheckBiometrics;
       final isDeviceSupported = await _auth.isDeviceSupported();
       return canCheck && isDeviceSupported;
-    } on PlatformException catch (e) {
-      debugPrint('Error verificando soporte biométrico: ${e.message}');
+    } catch (e) {
+      debugPrint('Soporte biométrico no disponible en esta plataforma: $e');
       return false;
     }
   }
 
   /// Lista los tipos de biometría disponibles (huella dactilar, reconocimiento facial, etc.)
   Future<List<BiometricType>> getAvailableBiometrics() async {
+    if (kIsWeb) return [];
     try {
       return await _auth.getAvailableBiometrics();
-    } on PlatformException catch (e) {
-      debugPrint('Error obteniendo biometrías disponibles: ${e.message}');
+    } catch (e) {
+      debugPrint('Error obteniendo biometrías disponibles: $e');
       return [];
     }
   }
