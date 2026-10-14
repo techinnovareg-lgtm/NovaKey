@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../models/vault_item.dart';
 import '../services/vault_sync_service.dart';
 import '../widgets/password_generator_dialog.dart';
+import 'txt_import_screen.dart';
 
 class VaultHomeScreen extends StatefulWidget {
   final VaultSyncService syncService;
@@ -237,6 +238,17 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.file_upload_outlined),
+            tooltip: 'Importar cuentas (.txt)',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => TxtImportScreen(syncService: widget.syncService),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.sync_rounded),
             tooltip: 'Sincronizar ahora',

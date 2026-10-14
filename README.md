@@ -28,6 +28,11 @@ Aplicación multiplataforma (**Android, Windows, Web/Nube**) para la custodia y 
    - **Protección de Memoria**: Limpieza automática de búferes (`zeroize`) al bloquear o salir de la aplicación.
 5. **Autenticación Fuera de Banda (OTP / PIN)**:
    - Detección de nuevos dispositivos o accesos no reconocidos con disparo automático de un PIN de 6 dígitos al correo registrado vía Edge Functions.
+6. **Importación Inteligente de Archivos `.txt`**:
+   - Selector nativo de archivos `.txt` y editor de texto integrado.
+   - Reconocimiento sintáctico de títulos, correos y contraseñas (`correo / clave`, `correo:clave`).
+   - Soporte para **herencia contextual de títulos** en líneas con sangría o espacios consecutivos (ej. cuentas secundarias bajo un mismo servicio).
+   - Previsualización y edición antes de cifrar con `AES-256-GCM` y subir a Supabase.
 
 ---
 

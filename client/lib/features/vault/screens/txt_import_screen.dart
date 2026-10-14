@@ -1,0 +1,304 @@
+import 'dart:convert';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
+import '../services/vault_sync_service.dart';
+import '../utils/txt_credentials_parser.dart';
+
+/// Pantalla / Diálogo para cargar e importar archivos .txt de cuentas y contraseñas
+class TxtImportScreen extends StatefulWidget {
+  final VaultSyncService syncService;
+
+  const TxtImportScreen({super.key, required this.syncService});
+
+  @override
+  State<TxtImportScreen> createState() => _TxtImportScreenState();
+}
+
+class _TxtImportScreenState extends State<TxtImportScreen> {
+  final _textController = TextEditingController();
+  List<ParsedCredential> _parsedItems = [];
+  bool _isProcessing = false;
+  bool _obscurePasswords = true;
+  String? _loadedFileName;
+
+  Future<void> _pickTxtFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['txt'],
+        withData: true,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        String content = '';
+
+        if (file.bytes != null) {
+          content = utf8.decode(file.bytes!);
+        }
+
+        setState(() {
+          _loadedFileName = file.name;
+          _textController.text = content;
+        });
+
+        _parseContent(content);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al leer archivo: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  void _parseContent(String text) {
+    if (text.trim().isEmpty) {
+      setState(() => _parsedItems = []);
+      return;
+    }
+
+    final items = TxtCredentialsParser.parse(text);
+    setState(() {
+      _parsedItems = items;
+    });
+  }
+
+  Future<void> _importSelectedItems() async {
+    final selected = _parsedItems.where((item) => item.isSelected).toList();
+    if (selected.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecciona al menos una cuenta para importar')),
+      );
+      return;
+    }
+
+    setState(() => _isProcessing = true);
+
+    try {
+      int importedCount = 0;
+      for (final item in selected) {
+        final vaultItem = item.toVaultItem();
+        await widget.syncService.saveItem(vaultItem);
+        importedCount++;
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ Se cifraron e importaron $importedCount cuentas a tu bóveda con éxito.'),
+            backgroundColor: Colors.green.shade800,
+          ),
+        );
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error durante la importación: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Importar Cuentas (.txt)'),
+        actions: [
+          if (_parsedItems.isNotEmpty)
+            IconButton(
+              icon: Icon(_obscurePasswords ? Icons.visibility_rounded : Icons.visibility_off_rounded),
+              tooltip: _obscurePasswords ? 'Mostrar contraseñas' : 'Ocultar contraseñas',
+              onPressed: () => setState(() => _obscurePasswords = !_obscurePasswords),
+            ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Botón de selección de archivo y descripción
+            Card(
+              elevation: 0,
+              color: Colors.blueAccent.withOpacity(0.08),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: Colors.blueAccent.withOpacity(0.2)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    const Icon(Icons.description_rounded, size: 40, color: Colors.blueAccent),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Cargar Archivo de Cuentas',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Reconoce automáticamente formatos como:\nServicio    correo@ejemplo.com / contraseña\n            otrocorreo@ejemplo.com / contraseña',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.file_open_rounded),
+                      label: Text(_loadedFileName == null ? 'Seleccionar archivo .txt' : 'Archivo: $_loadedFileName'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blueAccent,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: _pickTxtFile,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Entrada de texto editable
+            ExpansionTile(
+              initiallyExpanded: _parsedItems.isEmpty,
+              title: const Text('O pegar / editar texto directamente'),
+              leading: const Icon(Icons.edit_note_rounded),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: TextField(
+                    controller: _textController,
+                    maxLines: 6,
+                    decoration: const InputDecoration(
+                      hintText: 'Pega aquí tus cuentas:\nGmail         car123@gmail.com / password123\nHotmail     hafgt1122@hotmail.com  / passwordhot123\n                  kjkjk23@hotmail.com / password5566',
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (text) => _parseContent(text),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Previsualización de resultados detectados
+            if (_parsedItems.isNotEmpty) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Cuentas Detectadas (${_parsedItems.length})',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  TextButton.icon(
+                    icon: Icon(
+                      _parsedItems.every((e) => e.isSelected)
+                          ? Icons.check_box_rounded
+                          : Icons.check_box_outline_blank_rounded,
+                      size: 18,
+                    ),
+                    label: Text(_parsedItems.every((e) => e.isSelected) ? 'Deseleccionar' : 'Seleccionar todo'),
+                    onPressed: () {
+                      final allSelected = _parsedItems.every((e) => e.isSelected);
+                      setState(() {
+                        for (var item in _parsedItems) {
+                          item.isSelected = !allSelected;
+                        }
+                      });
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _parsedItems.length,
+                itemBuilder: (context, index) {
+                  final item = _parsedItems[index];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: Checkbox(
+                        value: item.isSelected,
+                        onChanged: (val) {
+                          setState(() => item.isSelected = val ?? true);
+                        },
+                      ),
+                      title: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.blueAccent.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              item.title,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blueAccent,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              item.username,
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      subtitle: Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          _obscurePasswords ? '••••••••••••' : item.password,
+                          style: TextStyle(
+                            fontFamily: _obscurePasswords ? null : 'monospace',
+                            color: Colors.grey.shade400,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(50),
+                  backgroundColor: Colors.green.shade700,
+                  foregroundColor: Colors.white,
+                ),
+                icon: _isProcessing
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    : const Icon(Icons.enhanced_encryption_rounded),
+                label: Text(
+                  _isProcessing
+                      ? 'Cifrando con AES-256-GCM...'
+                      : 'Cifrar e Importar (${_parsedItems.where((e) => e.isSelected).length}) a la Bóveda',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                onPressed: _isProcessing ? null : _importSelectedItems,
+              ),
+              const SizedBox(height: 24),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
