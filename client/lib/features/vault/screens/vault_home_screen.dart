@@ -24,12 +24,22 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> {
   String _searchQuery = '';
   String _selectedCategory = 'all';
   Timer? _clipboardClearTimer;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     widget.syncService.initializeRealtimeSync();
-    widget.syncService.fetchAndDecryptAll();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    await widget.syncService.fetchAndDecryptAll();
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -324,10 +334,24 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> {
 
           // Lista de elementos de la Bóveda
           Expanded(
-            child: StreamBuilder<List<VaultItem>>(
-              stream: widget.syncService.vaultItemsStream,
-              initialData: widget.syncService.currentItems,
-              builder: (context, snapshot) {
+            child: _isLoading
+                ? const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(color: Colors.blueAccent),
+                        SizedBox(height: 16),
+                        Text(
+                          'Descifrando bóveda con clave maestra...',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  )
+                : StreamBuilder<List<VaultItem>>(
+                    stream: widget.syncService.vaultItemsStream,
+                    initialData: widget.syncService.currentItems,
+                    builder: (context, snapshot) {
                 final allItems = snapshot.data ?? [];
                 final filtered = allItems.where((item) {
                   final matchesSearch = item.title.toLowerCase().contains(_searchQuery) ||

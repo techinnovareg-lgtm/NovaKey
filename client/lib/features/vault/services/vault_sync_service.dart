@@ -74,27 +74,31 @@ class VaultSyncService {
       final localVaultJson = await _secureStorage.getLocalEncryptedVault(userEmail);
       if (localVaultJson != null && localVaultJson.isNotEmpty) {
         final List<dynamic> localList = jsonDecode(localVaultJson);
-        for (final row in localList) {
+        for (final dynamic rawRow in localList) {
           try {
-            final payload = EncryptedPayload.fromMap(row['encrypted']);
+            final Map<dynamic, dynamic> row = rawRow as Map<dynamic, dynamic>;
+            final dynamic rawEnc = row['encrypted'];
+            if (rawEnc == null) continue;
+            final payload = EncryptedPayload.fromMap(rawEnc as Map<dynamic, dynamic>);
             final decryptedJson = await CryptoEngine.decrypt(
               payload: payload,
               key: _masterEncryptionKey,
             );
 
             final item = VaultItem.fromDecryptedJson(
-              id: row['id'] as String,
+              id: (row['id'] ?? '').toString(),
               jsonStr: decryptedJson,
-              version: row['version'] as int? ?? 1,
-              isFavorite: row['is_favorite'] as bool? ?? false,
-              isDeleted: row['is_deleted'] as bool? ?? false,
-              updatedAt: DateTime.parse(row['updated_at'] as String),
+              version: (row['version'] as num?)?.toInt() ?? 1,
+              isFavorite: row['is_favorite'] == true,
+              isDeleted: row['is_deleted'] == true,
+              updatedAt: DateTime.tryParse((row['updated_at'] ?? '').toString()) ?? DateTime.now().toUtc(),
             );
 
             if (!item.isDeleted) {
               itemMap[item.id] = item;
             }
-          } catch (_) {
+          } catch (itemErr) {
+            debugPrint('Aviso al descifrar elemento individual: $itemErr');
             continue;
           }
         }

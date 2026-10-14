@@ -20,10 +20,10 @@ class EncryptedPayload {
         'auth_tag': authTagBase64,
       };
 
-  factory EncryptedPayload.fromMap(Map<String, dynamic> map) => EncryptedPayload(
-        ciphertextBase64: map['ciphertext'] as String,
-        nonceBase64: map['nonce'] as String,
-        authTagBase64: map['auth_tag'] as String,
+  factory EncryptedPayload.fromMap(Map<dynamic, dynamic> map) => EncryptedPayload(
+        ciphertextBase64: (map['ciphertext'] ?? '').toString(),
+        nonceBase64: (map['nonce'] ?? '').toString(),
+        authTagBase64: (map['auth_tag'] ?? '').toString(),
       );
 }
 
