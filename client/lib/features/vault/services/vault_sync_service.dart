@@ -11,6 +11,7 @@ import '../models/vault_item.dart';
 class VaultSyncService {
   final SupabaseClient _supabase;
   final SecretKey _masterEncryptionKey;
+  final String userEmail;
   final SecureStorageService _secureStorage;
   RealtimeChannel? _realtimeSubscription;
 
@@ -23,6 +24,7 @@ class VaultSyncService {
   VaultSyncService({
     required SupabaseClient supabase,
     required SecretKey masterEncryptionKey,
+    required this.userEmail,
     SecureStorageService? secureStorage,
   })  : _supabase = supabase,
         _masterEncryptionKey = masterEncryptionKey,
@@ -69,7 +71,7 @@ class VaultSyncService {
 
     // 1. Cargar y descifrar la bóveda local persistente
     try {
-      final localVaultJson = await _secureStorage.getLocalEncryptedVault();
+      final localVaultJson = await _secureStorage.getLocalEncryptedVault(userEmail);
       if (localVaultJson != null && localVaultJson.isNotEmpty) {
         final List<dynamic> localList = jsonDecode(localVaultJson);
         for (final row in localList) {
@@ -241,7 +243,7 @@ class VaultSyncService {
         });
       }
 
-      await _secureStorage.saveLocalEncryptedVault(jsonEncode(serializedList));
+      await _secureStorage.saveLocalEncryptedVault(userEmail, jsonEncode(serializedList));
     } catch (e) {
       debugPrint('Error al persistir bóveda cifrada en almacenamiento local: $e');
     }

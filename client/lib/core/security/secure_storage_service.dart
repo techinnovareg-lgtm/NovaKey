@@ -1,6 +1,7 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-/// Almacenamiento seguro respaldado por hardware (Android Keystore / Windows DPAPI)
+/// Almacenamiento seguro y persistente para la Bóveda Zero-Knowledge
 class SecureStorageService {
   final FlutterSecureStorage _storage = const FlutterSecureStorage(
     aOptions: AndroidOptions(
@@ -19,25 +20,30 @@ class SecureStorageService {
   static const String _keyBiometricEnabled = 'sec_biometric_enabled';
   static const String _keyDeviceFingerprint = 'sec_device_fingerprint';
   static const String _keyEncryptedMek = 'sec_encrypted_mek';
-  static const String _keyUserSalt = 'sec_user_salt';
-  static const String _keyUserEmail = 'sec_user_email';
+  static const String _keyLastEmail = 'sec_last_user_email';
 
-  /// Guarda la sal del usuario
-  Future<void> saveUserSalt(String saltBase64) async {
-    await _storage.write(key: _keyUserSalt, value: saltBase64);
+  /// Guarda la sal del usuario asociada a su correo (para que Argon2id derive siempre la misma clave)
+  Future<void> saveUserSalt(String email, String saltBase64) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'sec_salt_${email.toLowerCase().trim()}';
+    await prefs.setString(key, saltBase64);
   }
 
-  Future<String?> getUserSalt() async {
-    return await _storage.read(key: _keyUserSalt);
+  Future<String?> getUserSalt(String email) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'sec_salt_${email.toLowerCase().trim()}';
+    return prefs.getString(key);
   }
 
-  /// Guarda el email del usuario
+  /// Guarda el último email utilizado para recordar la sesión
   Future<void> saveUserEmail(String email) async {
-    await _storage.write(key: _keyUserEmail, value: email);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyLastEmail, email.toLowerCase().trim());
   }
 
   Future<String?> getUserEmail() async {
-    return await _storage.read(key: _keyUserEmail);
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyLastEmail);
   }
 
   /// Guarda o consulta el identificador único del hardware (Fingerprint)
@@ -59,7 +65,7 @@ class SecureStorageService {
     return value == '1';
   }
 
-  /// Guarda la clave de cifrado de la bóveda (MEK) protegida localmente
+  /// Guarda la clave de cifrado de la bóveda (MEK) protegida localmente para biometría
   Future<void> saveEncryptedMek(String mekBase64) async {
     await _storage.write(key: _keyEncryptedMek, value: mekBase64);
   }
@@ -68,18 +74,20 @@ class SecureStorageService {
     return await _storage.read(key: _keyEncryptedMek);
   }
 
-  static const String _keyLocalVaultItems = 'sec_local_vault_items';
-
-  /// Guarda los ítems cifrados en almacenamiento local (para modo offline o sin nube)
-  Future<void> saveLocalEncryptedVault(String jsonStr) async {
-    await _storage.write(key: _keyLocalVaultItems, value: jsonStr);
+  /// Guarda los ítems cifrados en almacenamiento local persistente (Offline-First)
+  Future<void> saveLocalEncryptedVault(String email, String jsonStr) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'sec_vault_${email.toLowerCase().trim()}';
+    await prefs.setString(key, jsonStr);
   }
 
-  Future<String?> getLocalEncryptedVault() async {
-    return await _storage.read(key: _keyLocalVaultItems);
+  Future<String?> getLocalEncryptedVault(String email) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'sec_vault_${email.toLowerCase().trim()}';
+    return prefs.getString(key);
   }
 
-  /// Borra todas las claves locales al cerrar sesión
+  /// Borra las claves locales temporales
   Future<void> clearAll() async {
     await _storage.deleteAll();
   }

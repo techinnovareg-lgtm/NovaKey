@@ -7,7 +7,7 @@ import '../../../core/security/biometric_service.dart';
 import '../../../core/security/secure_storage_service.dart';
 
 class AuthScreen extends StatefulWidget {
-  final Function(SecretKey masterEncryptionKey) onUnlockSuccess;
+  final Function(SecretKey masterEncryptionKey, String email) onUnlockSuccess;
 
   const AuthScreen({super.key, required this.onUnlockSuccess});
 
@@ -49,8 +49,11 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<void> _loadSavedEmail() async {
     final email = await _secureStorage.getUserEmail();
-    if (email != null && mounted) {
+    if (email != null && email.isNotEmpty && mounted) {
       _emailController.text = email;
+      setState(() {
+        _isLogin = true;
+      });
     }
   }
 
@@ -69,9 +72,10 @@ class _AuthScreenState extends State<AuthScreen> {
         throw Exception('No hay clave biométrica registrada.');
       }
 
+      final email = await _secureStorage.getUserEmail() ?? '';
       final keyBytes = base64Decode(savedMekBase64);
       final secretKey = SecretKey(keyBytes);
-      widget.onUnlockSuccess(secretKey);
+      widget.onUnlockSuccess(secretKey, email);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -100,15 +104,17 @@ class _AuthScreenState extends State<AuthScreen> {
     });
 
     try {
-      // 1. Obtener o generar la sal del usuario
-      String? saltBase64 = await _secureStorage.getUserSalt();
+      // 1. Obtener o generar la sal fija vinculada a este correo electrónico
+      String? saltBase64 = await _secureStorage.getUserSalt(email);
       Uint8List salt;
 
-      if (saltBase64 == null || !_isLogin) {
+      if (saltBase64 == null) {
+        // Primera vez que se registra esta cuenta
         salt = CryptoEngine.generateRandomSalt();
         saltBase64 = base64Encode(salt);
-        await _secureStorage.saveUserSalt(saltBase64);
+        await _secureStorage.saveUserSalt(email, saltBase64);
       } else {
+        // Usuario existente: usar su sal original para derivar la misma clave
         salt = base64Decode(saltBase64);
       }
 
@@ -125,7 +131,7 @@ class _AuthScreenState extends State<AuthScreen> {
       await _secureStorage.setBiometricsEnabled(true);
 
       // 4. Conceder acceso inmediato a la Bóveda en memoria
-      widget.onUnlockSuccess(derivedKeys.masterEncryptionKey);
+      widget.onUnlockSuccess(derivedKeys.masterEncryptionKey, email);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

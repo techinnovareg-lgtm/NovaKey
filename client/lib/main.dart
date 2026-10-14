@@ -42,13 +42,14 @@ class _SafeVaultAppState extends State<SafeVaultApp> {
   SecretKey? _activeMasterEncryptionKey;
   VaultSyncService? _syncService;
 
-  void _onUnlock(SecretKey key) {
+  void _onUnlock(SecretKey key, String email) {
     final client = Supabase.instance.client;
     setState(() {
       _activeMasterEncryptionKey = key;
       _syncService = VaultSyncService(
         supabase: client,
         masterEncryptionKey: key,
+        userEmail: email,
       );
     });
   }
@@ -87,6 +88,7 @@ class _SafeVaultAppState extends State<SafeVaultApp> {
       ),
       home: _activeMasterEncryptionKey != null && _syncService != null
           ? VaultHomeScreen(
+              key: UniqueKey(),
               syncService: _syncService!,
               onLock: _onLock,
             )
