@@ -9,11 +9,15 @@ import 'txt_import_screen.dart';
 class VaultHomeScreen extends StatefulWidget {
   final VaultSyncService syncService;
   final VoidCallback onLock;
+  final Duration currentTimeout;
+  final ValueChanged<Duration>? onTimeoutChanged;
 
   const VaultHomeScreen({
     super.key,
     required this.syncService,
     required this.onLock,
+    this.currentTimeout = const Duration(minutes: 2),
+    this.onTimeoutChanged,
   });
 
   @override
@@ -284,6 +288,83 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> {
             icon: const Icon(Icons.sync_rounded),
             tooltip: 'Sincronizar ahora',
             onPressed: () => widget.syncService.fetchAndDecryptAll(),
+          ),
+          PopupMenuButton<int>(
+            icon: const Icon(Icons.timer_outlined),
+            tooltip: 'Tiempo de bloqueo por inactividad',
+            onSelected: (seconds) {
+              final newDuration = Duration(seconds: seconds);
+              widget.onTimeoutChanged?.call(newDuration);
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    '⏱️ Bloqueo automático establecido en ${seconds < 60 ? "$seconds seg" : "${seconds ~/ 60} min"}.',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                  backgroundColor: const Color(0xFF1E293B),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            itemBuilder: (ctx) => [
+              PopupMenuItem(
+                value: 60,
+                child: Row(
+                  children: [
+                    Icon(
+                      widget.currentTimeout.inSeconds == 60 ? Icons.check_circle : Icons.circle_outlined,
+                      size: 18,
+                      color: Colors.blueAccent,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text('1 minuto (Seguridad alta)'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 120,
+                child: Row(
+                  children: [
+                    Icon(
+                      widget.currentTimeout.inSeconds == 120 ? Icons.check_circle : Icons.circle_outlined,
+                      size: 18,
+                      color: Colors.blueAccent,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text('2 minutos (Recomendado)'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 300,
+                child: Row(
+                  children: [
+                    Icon(
+                      widget.currentTimeout.inSeconds == 300 ? Icons.check_circle : Icons.circle_outlined,
+                      size: 18,
+                      color: Colors.blueAccent,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text('5 minutos'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 900,
+                child: Row(
+                  children: [
+                    Icon(
+                      widget.currentTimeout.inSeconds == 900 ? Icons.check_circle : Icons.circle_outlined,
+                      size: 18,
+                      color: Colors.blueAccent,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text('15 minutos'),
+                  ],
+                ),
+              ),
+            ],
           ),
           IconButton(
             icon: const Icon(Icons.lock_rounded, color: Colors.redAccent),

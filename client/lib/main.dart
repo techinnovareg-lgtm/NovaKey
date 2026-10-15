@@ -1,9 +1,13 @@
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'core/security/auto_lock_wrapper.dart';
 import 'features/auth/screens/auth_screen.dart';
 import 'features/vault/screens/vault_home_screen.dart';
 import 'features/vault/services/vault_sync_service.dart';
+
+final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,6 +45,7 @@ class SafeVaultApp extends StatefulWidget {
 class _SafeVaultAppState extends State<SafeVaultApp> {
   SecretKey? _activeMasterEncryptionKey;
   VaultSyncService? _syncService;
+  Duration _autoLockTimeout = const Duration(minutes: 2); // 2 minutos por defecto
 
   void _onUnlock(SecretKey key, String email) {
     final client = Supabase.instance.client;
@@ -54,16 +59,51 @@ class _SafeVaultAppState extends State<SafeVaultApp> {
     });
   }
 
-  void _onLock() {
+  void _onLock({bool dueToInactivity = false}) {
     _syncService?.dispose();
     setState(() {
       _activeMasterEncryptionKey = null;
       _syncService = null;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Bóveda bloqueada. Claves criptográficas eliminadas de la memoria RAM.'),
-        backgroundColor: Colors.black87,
+
+    final message = dueToInactivity
+        ? '🔒 Sesión cerrada automáticamente por inactividad para proteger tus datos.'
+        : 'Bóveda bloqueada. Claves criptográficas eliminadas de la memoria RAM.';
+
+    rootScaffoldMessengerKey.currentState?.hideCurrentSnackBar();
+    rootScaffoldMessengerKey.currentState?.showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              dueToInactivity ? Icons.timer_off_rounded : Icons.lock_rounded,
+              color: dueToInactivity ? Colors.amberAccent : Colors.greenAccent,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFF1E293B),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(
+            color: dueToInactivity
+                ? Colors.amberAccent.withOpacity(0.5)
+                : Colors.blueAccent.withOpacity(0.4),
+          ),
+        ),
+        duration: const Duration(seconds: 5),
       ),
     );
   }
@@ -71,6 +111,7 @@ class _SafeVaultAppState extends State<SafeVaultApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      scaffoldMessengerKey: rootScaffoldMessengerKey,
       title: 'SafeVault - Gestor Cero-Conocimiento',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.dark,
@@ -87,10 +128,19 @@ class _SafeVaultAppState extends State<SafeVaultApp> {
         ),
       ),
       home: _activeMasterEncryptionKey != null && _syncService != null
-          ? VaultHomeScreen(
-              key: UniqueKey(),
-              syncService: _syncService!,
-              onLock: _onLock,
+          ? AutoLockWrapper(
+              timeout: _autoLockTimeout,
+              isEnabled: true,
+              onTimeout: () => _onLock(dueToInactivity: true),
+              child: VaultHomeScreen(
+                key: UniqueKey(),
+                syncService: _syncService!,
+                onLock: () => _onLock(dueToInactivity: false),
+                currentTimeout: _autoLockTimeout,
+                onTimeoutChanged: (newTimeout) {
+                  setState(() => _autoLockTimeout = newTimeout);
+                },
+              ),
             )
           : AuthScreen(
               onUnlockSuccess: _onUnlock,
