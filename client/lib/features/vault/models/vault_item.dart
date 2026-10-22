@@ -9,7 +9,8 @@ class VaultItem {
   final String password;
   final String websiteUrl;
   final String notes;
-  final String category; // 'login', 'note', 'card', 'server'
+  final String category; // 'login', 'note', 'card', 'server', 'device'
+  final String imageBase64; // Foto de la credencial o etiqueta física del dispositivo (Módem, Cámara, etc.)
   final bool isFavorite;
   final bool isDeleted;
   final int version;
@@ -23,6 +24,7 @@ class VaultItem {
     this.websiteUrl = '',
     this.notes = '',
     this.category = 'login',
+    this.imageBase64 = '',
     this.isFavorite = false,
     this.isDeleted = false,
     this.version = 1,
@@ -39,6 +41,7 @@ class VaultItem {
       'websiteUrl': websiteUrl,
       'notes': notes,
       'category': category,
+      'imageBase64': imageBase64,
     });
   }
 
@@ -60,6 +63,7 @@ class VaultItem {
       websiteUrl: data['websiteUrl'] ?? '',
       notes: data['notes'] ?? '',
       category: data['category'] ?? 'login',
+      imageBase64: (data['imageBase64'] ?? '').toString(),
       version: version,
       isFavorite: isFavorite,
       isDeleted: isDeleted,
@@ -74,6 +78,7 @@ class VaultItem {
     String? websiteUrl,
     String? notes,
     String? category,
+    String? imageBase64,
     bool? isFavorite,
     bool? isDeleted,
     int? version,
@@ -86,6 +91,7 @@ class VaultItem {
       websiteUrl: websiteUrl ?? this.websiteUrl,
       notes: notes ?? this.notes,
       category: category ?? this.category,
+      imageBase64: imageBase64 ?? this.imageBase64,
       isFavorite: isFavorite ?? this.isFavorite,
       isDeleted: isDeleted ?? this.isDeleted,
       version: version ?? this.version,

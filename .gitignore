@@ -27,3 +27,7 @@ Thumbs.db
 *.aab
 *.msi
 *.exe
+
+# Python
+__pycache__/
+*.pyc

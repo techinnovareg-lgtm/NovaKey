@@ -5,6 +5,7 @@ import 'core/security/auto_lock_wrapper.dart';
 import 'features/auth/screens/auth_screen.dart';
 import 'features/vault/screens/vault_home_screen.dart';
 import 'features/vault/services/vault_sync_service.dart';
+import 'features/subscription/screens/superadmin_dashboard_screen.dart';
 
 final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey =
     GlobalKey<ScaffoldMessengerState>();
@@ -12,14 +13,15 @@ final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey =
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inicialización de Supabase (Credenciales de entorno o demo local)
+  // Inicialización de Supabase con el proyecto oficial de NovaKey
   const supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: 'https://demo-passwords-vault.supabase.co',
+    defaultValue: 'https://ysnjstolpjszgjsmtjkc.supabase.co',
   );
   const supabaseAnonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy_anon_key_for_offline_dev',
+    defaultValue:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzbmpzdG9scGpzemdqc210amtjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1MjgxNjcsImV4cCI6MjEwODEwNDE2N30.0LDVtePPUoT6ly0JE3riMu8Z05poeuOQuQBRlfTwx3E',
   );
 
   try {
@@ -112,19 +114,30 @@ class _SafeVaultAppState extends State<SafeVaultApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       scaffoldMessengerKey: rootScaffoldMessengerKey,
-      title: 'SafeVault - Gestor Cero-Conocimiento',
+      title: 'NovaKey - Bóveda Cero-Conocimiento',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.dark,
       darkTheme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blueAccent,
+          seedColor: const Color(0xFF1D4ED8),
+          primary: const Color(0xFF2563EB),
+          secondary: const Color(0xFF38BDF8),
           brightness: Brightness.dark,
         ),
-        scaffoldBackgroundColor: const Color(0xFF111418),
+        scaffoldBackgroundColor: const Color(0xFF0A0E17),
         cardTheme: const CardTheme(
-          color: Color(0xFF1A1F26),
+          color: Color(0xFF111827),
+        ),
+        snackBarTheme: const SnackBarThemeData(
+          backgroundColor: Color(0xFF1E40AF),
+          contentTextStyle: TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+          behavior: SnackBarBehavior.floating,
         ),
       ),
       home: _activeMasterEncryptionKey != null && _syncService != null
@@ -132,15 +145,26 @@ class _SafeVaultAppState extends State<SafeVaultApp> {
               timeout: _autoLockTimeout,
               isEnabled: true,
               onTimeout: () => _onLock(dueToInactivity: true),
-              child: VaultHomeScreen(
-                key: UniqueKey(),
-                syncService: _syncService!,
-                onLock: () => _onLock(dueToInactivity: false),
-                currentTimeout: _autoLockTimeout,
-                onTimeoutChanged: (newTimeout) {
-                  setState(() => _autoLockTimeout = newTimeout);
-                },
-              ),
+              child: (_syncService!.userEmail.toLowerCase().trim() == 'tech.innova.reg@gmail.com' ||
+                      _syncService!.userEmail.toLowerCase().trim() == 'carlos.amambal@tech-innova.online')
+                  ? SuperAdminDashboardScreen(
+                      key: UniqueKey(),
+                      syncService: _syncService!,
+                      onLock: () => _onLock(dueToInactivity: false),
+                      currentTimeout: _autoLockTimeout,
+                      onTimeoutChanged: (newTimeout) {
+                        setState(() => _autoLockTimeout = newTimeout);
+                      },
+                    )
+                  : VaultHomeScreen(
+                      key: UniqueKey(),
+                      syncService: _syncService!,
+                      onLock: () => _onLock(dueToInactivity: false),
+                      currentTimeout: _autoLockTimeout,
+                      onTimeoutChanged: (newTimeout) {
+                        setState(() => _autoLockTimeout = newTimeout);
+                      },
+                    ),
             )
           : AuthScreen(
               onUnlockSuccess: _onUnlock,

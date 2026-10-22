@@ -18,6 +18,12 @@ class VaultSyncService {
   final _vaultItemsController = StreamController<List<VaultItem>>.broadcast();
   Stream<List<VaultItem>> get vaultItemsStream => _vaultItemsController.stream;
 
+  final _categoriesController = StreamController<List<String>>.broadcast();
+  Stream<List<String>> get categoriesStream => _categoriesController.stream;
+
+  List<String> _customCategories = [];
+  List<String> get customCategories => List.unmodifiable(_customCategories);
+
   List<VaultItem> _cachedItems = [];
   List<VaultItem> get currentItems => List.unmodifiable(_cachedItems);
 
@@ -72,8 +78,10 @@ class VaultSyncService {
     // 1. Cargar y descifrar la bóveda local persistente
     try {
       final localVaultJson = await _secureStorage.getLocalEncryptedVault(userEmail);
+
       if (localVaultJson != null && localVaultJson.isNotEmpty) {
         final List<dynamic> localList = jsonDecode(localVaultJson);
+        int decryptFailures = 0;
         for (final dynamic rawRow in localList) {
           try {
             final Map<dynamic, dynamic> row = rawRow as Map<dynamic, dynamic>;
@@ -98,9 +106,13 @@ class VaultSyncService {
               itemMap[item.id] = item;
             }
           } catch (itemErr) {
+            decryptFailures++;
             debugPrint('Aviso al descifrar elemento individual: $itemErr');
             continue;
           }
+        }
+        if (decryptFailures > 0 && itemMap.isEmpty) {
+          debugPrint('⚠️ Alerta: Todos los elementos locales fallaron en descifrarse con la clave actual ($decryptFailures fallos).');
         }
       }
     } catch (e) {
@@ -153,6 +165,27 @@ class VaultSyncService {
 
     _cachedItems = itemMap.values.toList()
       ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+
+    // Sincronizar categorías personalizadas
+    final savedCats = await _secureStorage.getCustomCategories(userEmail);
+    final catSet = Set<String>.from(savedCats);
+    for (final item in _cachedItems) {
+      if (item.category.trim().isNotEmpty &&
+          item.category != 'all' &&
+          item.category != 'favorites' &&
+          item.category != 'login' &&
+          item.category != 'device' &&
+          item.category != 'note' &&
+          item.category != 'bancos' &&
+          item.category != 'tiendas' &&
+          item.category != 'correo') {
+        catSet.add(item.category.trim());
+      }
+    }
+    _customCategories = catSet.toList()..sort();
+    if (!_categoriesController.isClosed) {
+      _categoriesController.add(_customCategories);
+    }
 
     _vaultItemsController.add(_cachedItems);
     return _cachedItems;
@@ -253,8 +286,32 @@ class VaultSyncService {
     }
   }
 
+  /// Añade una nueva categoría personalizada
+  Future<void> addCustomCategory(String name) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return;
+    if (!_customCategories.any((c) => c.toLowerCase() == trimmed.toLowerCase())) {
+      _customCategories.add(trimmed);
+      _customCategories.sort();
+      await _secureStorage.saveCustomCategories(userEmail, _customCategories);
+      if (!_categoriesController.isClosed) {
+        _categoriesController.add(_customCategories);
+      }
+    }
+  }
+
+  /// Elimina una categoría personalizada existente
+  Future<void> deleteCustomCategory(String name) async {
+    _customCategories.removeWhere((c) => c.toLowerCase() == name.toLowerCase().trim());
+    await _secureStorage.saveCustomCategories(userEmail, _customCategories);
+    if (!_categoriesController.isClosed) {
+      _categoriesController.add(_customCategories);
+    }
+  }
+
   void dispose() {
     _realtimeSubscription?.unsubscribe();
     _vaultItemsController.close();
+    _categoriesController.close();
   }
 }

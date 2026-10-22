@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import '../models/vault_category.dart';
 import '../services/vault_sync_service.dart';
 import '../utils/excel_credentials_parser.dart';
 import '../utils/txt_credentials_parser.dart';
@@ -22,6 +23,80 @@ class _TxtImportScreenState extends State<TxtImportScreen> {
   bool _obscurePasswords = true;
   String? _loadedFileName;
   String _fileTypeDetected = ''; // 'txt' o 'excel'
+  String _selectedTargetCategory = 'correo';
+
+  List<VaultCategory> _getAllCategories() {
+    final custom = widget.syncService.customCategories.map((name) {
+      return VaultCategory(
+        id: name,
+        name: name,
+        icon: VaultCategory.getIconForName(name),
+        isSystem: false,
+      );
+    }).toList();
+    return [...VaultCategory.defaultCategories, ...custom];
+  }
+
+  Future<String?> _promptNewCategoryName() async {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (dlgCtx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E2430),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.create_new_folder_rounded, color: Color(0xFF38BDF8)),
+            SizedBox(width: 8),
+            Text('Nueva Categoría', style: TextStyle(fontSize: 18, color: Colors.white)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Ingresa el nombre de la categoría para las cuentas importadas:',
+              style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                hintText: 'Ej. Bancos, Redes Sociales, Tiendas por departamento',
+                border: OutlineInputBorder(),
+              ),
+              onSubmitted: (val) {
+                if (val.trim().isNotEmpty) {
+                  Navigator.of(dlgCtx).pop(val.trim());
+                }
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dlgCtx).pop(),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1D4ED8),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              if (controller.text.trim().isNotEmpty) {
+                Navigator.of(dlgCtx).pop(controller.text.trim());
+              }
+            },
+            child: const Text('Crear'),
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _pickFile() async {
     try {
@@ -97,7 +172,9 @@ class _TxtImportScreenState extends State<TxtImportScreen> {
     try {
       int importedCount = 0;
       for (final item in selected) {
-        final vaultItem = item.toVaultItem();
+        final vaultItem = item.toVaultItem().copyWith(
+          category: _selectedTargetCategory,
+        );
         await widget.syncService.saveItem(vaultItem);
         importedCount++;
       }
@@ -327,6 +404,99 @@ class _TxtImportScreenState extends State<TxtImportScreen> {
                     ),
                   );
                 },
+              ),
+              const SizedBox(height: 16),
+
+              // Selector de categoría de destino
+              Card(
+                elevation: 0,
+                color: const Color(0xFF1E2430),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: const BorderSide(color: Color(0xFF334155)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.folder_shared_rounded, color: Color(0xFF38BDF8), size: 22),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Asignar a Categoría:',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Builder(
+                          builder: (context) {
+                            final allCategories = _getAllCategories();
+                            final catVal = allCategories.any((c) => c.id == _selectedTargetCategory)
+                                ? _selectedTargetCategory
+                                : allCategories.first.id;
+
+                            return DropdownButtonFormField<String>(
+                              value: catVal,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                isDense: true,
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                border: OutlineInputBorder(),
+                              ),
+                              items: [
+                                ...allCategories.map((c) => DropdownMenuItem(
+                                      value: c.id,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(c.icon, size: 16, color: const Color(0xFF38BDF8)),
+                                          const SizedBox(width: 6),
+                                          Flexible(
+                                            child: Text(
+                                              c.name,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(fontSize: 13),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    )),
+                                const DropdownMenuItem(
+                                  value: '__new__',
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.add_circle_outline_rounded, size: 16, color: Colors.blueAccent),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        '+ Crear nueva...',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.blueAccent,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                              onChanged: (val) async {
+                                if (val == '__new__') {
+                                  final newCat = await _promptNewCategoryName();
+                                  if (newCat != null && newCat.trim().isNotEmpty) {
+                                    await widget.syncService.addCustomCategory(newCat.trim());
+                                    setState(() => _selectedTargetCategory = newCat.trim());
+                                  }
+                                } else if (val != null) {
+                                  setState(() => _selectedTargetCategory = val);
+                                }
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
               const SizedBox(height: 16),
 
