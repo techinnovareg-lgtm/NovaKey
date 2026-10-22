@@ -33,6 +33,11 @@
       padding: 0;
     }
 
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+
     :root {
       /* Paleta de ciberseguridad sólida (Sin neones genéricos) */
       --bg-base: #070A11;
@@ -1067,11 +1072,180 @@
       fill: #FFFFFF;
     }
 
-    /* ── Responsive Mobile ── */
-    @media (max-width: 960px) {
-      .hero-grid, .zk-layout, .dual-action-grid {
+    /* ── Sección de Funcionalidades Principales & Plan Gratuito ── */
+    .showcase-wrapper {
+      margin: 30px auto 40px;
+      max-width: 1060px;
+      position: relative;
+    }
+
+    .showcase-frame {
+      background: linear-gradient(180deg, #162035 0%, #0A0F1A 100%);
+      border: 1px solid #2A3B5C;
+      border-radius: var(--radius-lg);
+      padding: 12px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(37, 99, 235, 0.15);
+      overflow: hidden;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .showcase-frame:hover {
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), 0 0 40px rgba(37, 99, 235, 0.25);
+    }
+
+    .showcase-img {
+      width: 100%;
+      height: auto;
+      border-radius: 12px;
+      display: block;
+    }
+
+    /* ── Tarjeta Destacada del Plan Gratuito (Starter) ── */
+    .free-tier-banner {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(37, 99, 235, 0.08) 100%);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      border-radius: var(--radius-lg);
+      padding: 36px;
+      margin-top: 36px;
+      box-shadow: var(--shadow-elevated);
+    }
+
+    .free-tier-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 32px;
+      align-items: center;
+    }
+
+    .free-tier-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #10B981;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      padding: 6px 14px;
+      border-radius: var(--radius-pill);
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 16px;
+    }
+
+    .free-tier-title {
+      font-size: 1.85rem;
+      margin-bottom: 12px;
+    }
+
+    .free-tier-desc {
+      font-size: 1rem;
+      color: #94A3B8;
+      margin-bottom: 24px;
+    }
+
+    .free-perks-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .free-perk-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 0.95rem;
+      color: #F8FAFC;
+    }
+
+    .free-perk-item svg {
+      width: 20px;
+      height: 20px;
+      fill: #10B981;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .free-restrictions-box {
+      background: #090D15;
+      border: 1px solid #1E293B;
+      border-radius: var(--radius-md);
+      padding: 24px;
+    }
+
+    .free-restrictions-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #F59E0B;
+      margin-bottom: 14px;
+    }
+
+    .free-restriction-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 0.88rem;
+      color: #94A3B8;
+      margin-bottom: 10px;
+      line-height: 1.5;
+    }
+
+    .free-upgrade-note {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid #1E293B;
+      font-size: 0.84rem;
+      color: #CBD5E1;
+    }
+
+    .free-actions-group {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 24px;
+    }
+
+    /* ── Helper de Descarga APK (Chrome/Android SafeBrowsing) ── */
+    .download-tip-box {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      border-radius: var(--radius-sm);
+      padding: 14px 18px;
+      margin-top: 16px;
+    }
+
+    .download-tip-icon {
+      font-size: 1.3rem;
+      flex-shrink: 0;
+    }
+
+    .download-tip-text {
+      font-size: 0.85rem;
+      color: #E2E8F0;
+      line-height: 1.5;
+    }
+
+    .download-tip-text strong {
+      color: #F59E0B;
+    }
+
+    /* ── Media Queries Totalmente Responsivos ── */
+    @media (max-width: 1024px) {
+      .hero-grid, .zk-layout, .dual-action-grid, .free-tier-grid {
         grid-template-columns: 1fr;
       }
+      .features-grid, .pricing-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 768px) {
       .features-grid, .pricing-grid {
         grid-template-columns: 1fr;
       }
@@ -1090,20 +1264,61 @@
       .hero-content h1 {
         font-size: 2.1rem;
       }
+      .free-tier-title {
+        font-size: 1.5rem;
+      }
     }
 
-    @media (max-width: 600px) {
-      .footer-grid {
-        grid-template-columns: 1fr;
+    @media (max-width: 480px) {
+      .container {
+        padding: 0 16px;
+      }
+      .hero-content h1 {
+        font-size: 1.75rem;
+      }
+      .hero-description {
+        font-size: 0.95rem;
       }
       .trust-grid {
         grid-template-columns: 1fr;
       }
-      .hero-cta-group {
+      .footer-grid {
+        grid-template-columns: 1fr;
+      }
+      .hero-cta-group, .free-actions-group {
         flex-direction: column;
       }
-      .hero-cta-group .btn {
+      .hero-cta-group .btn, .free-actions-group .btn {
         width: 100%;
+      }
+      .nav-brand-title {
+        font-size: 1.15rem;
+      }
+      .btn-primary, .btn {
+        padding: 11px 18px;
+        font-size: 0.88rem;
+      }
+      .mockup-header {
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-start;
+      }
+      .mockup-stats-bar {
+        grid-template-columns: 1fr;
+      }
+      .qr-download-container {
+        flex-direction: column;
+        text-align: center;
+      }
+      .whatsapp-float {
+        bottom: 16px;
+        right: 16px;
+        width: 50px;
+        height: 50px;
+      }
+      .whatsapp-float svg {
+        width: 26px;
+        height: 26px;
       }
     }
   </style>
@@ -1126,10 +1341,11 @@
       </a>
 
       <nav class="nav-links">
-        <a href="#seguridad">Seguridad</a>
-        <a href="#funciones">Funciones</a>
+        <a href="#funcionalidades-gratis">Funciones & Plan Gratis</a>
+        <a href="#seguridad">Zero-Knowledge</a>
+        <a href="#funciones">Herramientas</a>
         <a href="#planes">Planes</a>
-        <a href="#descargar">Descarga</a>
+        <a href="#descargar">Descarga APK</a>
         <a href="#faq">Preguntas</a>
       </nav>
 
@@ -1250,6 +1466,109 @@
               <!-- Banner de Seguridad Gráfico -->
               <div class="banner-preview-box">
                 <img src="assets/images/novakey_hero_banner.jpg" alt="Infraestructura de Seguridad NovaKey" class="banner-preview-img">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       SECCIÓN: FUNCIONALIDADES PRINCIPALES & PLAN GRATUITO
+       ══════════════════════════════════════════════════════════════ -->
+  <section class="section" id="funcionalidades-gratis" style="padding-top: 40px; padding-bottom: 60px;">
+    <div class="container">
+      <div class="section-header">
+        <span class="badge">Suite de Ciberseguridad & Soberanía Digital</span>
+        <h2 class="section-title">Principales Funcionalidades de NovaKey</h2>
+        <p class="section-subtitle">
+          Desarrollado por la empresa de tecnología <strong>Tech Innova</strong>. Una solución moderna para proteger tus claves, respaldar credenciales de hardware en fotos y sincronizar tus dispositivos bajo arquitectura Cero-Conocimiento.
+        </p>
+      </div>
+
+      <!-- Imagen Destacada de Funcionalidades (Showcase de la Aplicación) -->
+      <div class="showcase-wrapper">
+        <div class="showcase-frame">
+          <img src="assets/images/novakey_features_showcase.jpg" alt="Vista General de la Suite NovaKey por Tech Innova: Credenciales, Foto de Hardware Router, Escudo Criptográfico AES-256 Argon2id y Sincronización Multi-plataforma" class="showcase-img">
+        </div>
+      </div>
+
+      <!-- Tarjeta Destacada: Plan Gratuito (Starter) con Restricciones Transparentes -->
+      <div class="free-tier-banner">
+        <div class="free-tier-grid">
+          <div>
+            <div class="free-tier-badge">
+              <svg style="width:14px;height:14px;fill:currentColor;" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              Plan Gratuito Incluido · S/ 0 de por Vida
+            </div>
+            <h3 class="free-tier-title">Comienza 100% Gratis sin Tarjeta</h3>
+            <p class="free-tier-desc">
+              Al registrarte en NovaKey se te asigna automáticamente el <strong>Plan Starter</strong>. Disfrutas de la misma tecnología criptográfica de grado militar sin pagar un solo céntimo:
+            </p>
+
+            <div class="free-perks-list">
+              <div class="free-perk-item">
+                <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                <span><strong>Bóveda Cero-Conocimiento:</strong> Tus datos se cifran con AES-256-GCM y Argon2id en tu propio equipo antes de salir a la nube.</span>
+              </div>
+              <div class="free-perk-item">
+                <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                <span><strong>Hasta 30 contraseñas guardadas:</strong> Tus cuentas indispensables de correo, bancos, plataformas y servicios organizadas y blindadas.</span>
+              </div>
+              <div class="free-perk-item">
+                <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                <span><strong>Hasta 3 fotos de hardware cifradas:</strong> Guarda fotos de etiquetas de routers, módems o equipos con sus credenciales vinculadas.</span>
+              </div>
+              <div class="free-perk-item">
+                <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                <span><strong>Sincronización Web y Android:</strong> Tus claves siempre disponibles en tu teléfono móvil o en el navegador de tu computadora.</span>
+              </div>
+              <div class="free-perk-item">
+                <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                <span><strong>Seguridad 2FA por Correo:</strong> Código PIN de 6 dígitos enviado a tu email para verificar cada inicio de sesión.</span>
+              </div>
+            </div>
+
+            <div class="free-actions-group">
+              <a href="./app/" class="btn btn-emerald">
+                🚀 Crear Cuenta Gratis (Bóveda Web)
+              </a>
+              <a href="#descargar" class="btn btn-secondary">
+                📱 Descargar APK para Android
+              </a>
+            </div>
+          </div>
+
+          <!-- Cuadro de Restricciones del Plan Gratis y Escalabilidad -->
+          <div class="free-restrictions-box">
+            <div class="free-restrictions-title">
+              <svg style="width:20px;height:20px;fill:currentColor;" viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+              Restricciones del Plan Starter Gratuito
+            </div>
+
+            <div class="free-restriction-item">
+              <span>🔒</span>
+              <div><strong>Límite de 30 contraseñas:</strong> Pensado para uso personal individual o prueba del servicio. Una vez alcanzado el límite, se requiere ampliar de plan para almacenar más.</div>
+            </div>
+
+            <div class="free-restriction-item">
+              <span>📸</span>
+              <div><strong>Límite de 3 fotos de equipos:</strong> Permite proteger los routers esenciales. Para registrar switches, servidores o cámaras adicionales, amplía tu capacidad.</div>
+            </div>
+
+            <div class="free-restriction-item">
+              <span>👤</span>
+              <div><strong>Monousuario:</strong> Para cuentas compartidas de equipos técnicos o empresas, contamos con el plan Business.</div>
+            </div>
+
+            <div class="free-upgrade-note">
+              <strong style="color:#38BDF8; display:block; margin-bottom:6px;">¿Deseas contraseñas y fotos ILIMITADAS?</strong>
+              Puedes contratar el <strong>Plan Pro</strong> (S/ 9.90/mes) o <strong>Business</strong> (S/ 29.90/mes). La activación se realiza desde el panel de Superadministrador contactando a soporte:
+              <div style="margin-top:12px;">
+                <a href="https://wa.me/51947515529?text=Hola%20Tech%20Innova,%20deseo%20activar%20un%20plan%20superior%20de%20NovaKey" target="_blank" class="btn btn-primary" style="width:100%; font-size:0.85rem; padding:10px 14px;">
+                  💬 Solicitar Ampliación por WhatsApp (+51 947 515 529)
+                </a>
               </div>
             </div>
           </div>
@@ -1466,9 +1785,22 @@
               </div>
             </div>
           </div>
-          <a href="https://github.com/techinnovareg-lgtm/NovaKey/releases/download/v1.0.0-milestone/NovaKey-v1.0.0.apk" class="btn btn-emerald" style="width:100%;" download>
-            📥 Descargar NovaKey-v1.0.0.apk (24 MB)
-          </a>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <a href="https://github.com/techinnovareg-lgtm/NovaKey/releases/download/v1.0.0-milestone/NovaKey-v1.0.0.apk" class="btn btn-emerald" style="width:100%;" target="_blank" rel="noopener noreferrer">
+              📥 Descarga Directa NovaKey-v1.0.0.apk (24 MB)
+            </a>
+            <a href="https://github.com/techinnovareg-lgtm/NovaKey/releases/tag/v1.0.0-milestone" class="btn btn-secondary" style="width:100%; font-size:0.88rem;" target="_blank" rel="noopener noreferrer">
+              📦 Ver Release Oficial en GitHub (Mirror Alternativo)
+            </a>
+          </div>
+
+          <div class="download-tip-box">
+            <div class="download-tip-icon">💡</div>
+            <div class="download-tip-text">
+              <strong>¿Tu descarga en Chrome/Android dice "Comprobando..." al llegar al 100%?</strong><br>
+              Al ser una aplicación oficial fuera de Google Play, tu navegador realiza un escaneo de seguridad local. Cuando el archivo termine de bajar, haz clic en <strong>"Descargar de todos modos"</strong> o <strong>"Conservar archivo"</strong> en la barra de descargas para finalizar la instalación de inmediato.
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1804,6 +2136,15 @@
         item.classList.add('active');
         ans.style.maxHeight = ans.scrollHeight + "px";
       }
+    }
+
+    // 3. Desregistrar cualquier Service Worker previo en la raíz (evita bloqueos de descarga)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for (let registration of registrations) {
+          registration.unregister();
+        }
+      });
     }
   </script>
 </body>
