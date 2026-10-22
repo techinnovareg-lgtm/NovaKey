@@ -1,0 +1,1810 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NovaKey · Bóveda Cero-Conocimiento para Contraseñas | Tech Innova</title>
+  <meta name="description" content="NovaKey es la bóveda de contraseñas Zero-Knowledge de grado militar desarrollada por Tech Innova. Cifrado AES-256-GCM y Argon2id en tu dispositivo. Sincronización Web y Android.">
+  <meta name="keywords" content="NovaKey, Tech Innova, gestor de contraseñas, Zero Knowledge, seguridad cibernética, bóveda digital, AES-256-GCM, Argon2, Perú, ciberseguridad">
+  <meta name="author" content="Tech Innova">
+
+  <!-- Open Graph / Meta Social -->
+  <meta property="og:title" content="NovaKey – Bóveda Cero-Conocimiento | Tech Innova">
+  <meta property="og:description" content="Tus contraseñas protegidas con cifrado AES-256-GCM en tu dispositivo. Ni Tech Innova ni nadie más puede leerlas.">
+  <meta property="og:image" content="assets/images/novakey_hero_banner.jpg">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://novakey.tech-innova.online/">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="assets/images/novakey_logo.png">
+
+  <!-- Tipografía Oficial Google Fonts (Estilo Enterprise Tech Innova) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+  <style>
+    /* ══════════════════════════════════════════════════════════════
+       DESIGN SYSTEM – NovaKey Cybersecurity Enterprise (Tech Innova)
+       ══════════════════════════════════════════════════════════════ */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      /* Paleta de ciberseguridad sólida (Sin neones genéricos) */
+      --bg-base: #070A11;
+      --bg-surface: #0E131F;
+      --bg-surface-elevated: #141B2D;
+      --bg-card: #111726;
+      --bg-card-hover: #162035;
+
+      --border-subtle: #1E293B;
+      --border-highlight: #334155;
+      --border-focus: #2563EB;
+
+      /* Acentos de identidad tecnológica */
+      --brand-blue: #2563EB;
+      --brand-blue-hover: #1D4ED8;
+      --brand-cyan: #0284C7;
+      --brand-emerald: #10B981;
+      --brand-amber: #F59E0B;
+      --brand-purple: #7C3AED;
+
+      /* Tipografía y Textos */
+      --text-primary: #F8FAFC;
+      --text-secondary: #94A3B8;
+      --text-muted: #64748B;
+      --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --font-heading: 'Outfit', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-pill: 9999px;
+
+      --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.35);
+      --shadow-elevated: 0 10px 30px rgba(0, 0, 0, 0.45);
+      --transition: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    html {
+      scroll-behavior: smooth;
+      background-color: var(--bg-base);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      overflow-x: hidden;
+      background: radial-gradient(circle at 50% 0%, #10172A 0%, var(--bg-base) 70%);
+      min-height: 100vh;
+    }
+
+    /* ── Contenedores ── */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ── Tipografía ── */
+    h1, h2, h3, h4, .font-heading {
+      font-family: var(--font-heading);
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+    }
+
+    p {
+      color: var(--text-secondary);
+      font-size: 1.02rem;
+    }
+
+    /* ── Botones ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      font-family: var(--font-body);
+      font-weight: 700;
+      font-size: 0.95rem;
+      padding: 13px 26px;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      transition: var(--transition);
+      cursor: pointer;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: var(--brand-blue);
+      color: #FFFFFF;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+    }
+    .btn-primary:hover {
+      background: var(--brand-blue-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+    }
+
+    .btn-secondary {
+      background: var(--bg-surface-elevated);
+      color: #E2E8F0;
+      border-color: var(--border-subtle);
+    }
+    .btn-secondary:hover {
+      background: #1C263F;
+      border-color: var(--border-highlight);
+      color: #FFFFFF;
+      transform: translateY(-2px);
+    }
+
+    .btn-emerald {
+      background: #059669;
+      color: #FFFFFF;
+    }
+    .btn-emerald:hover {
+      background: #047857;
+      transform: translateY(-2px);
+    }
+
+    /* ── Badges y Chips ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: var(--radius-pill);
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background: rgba(37, 99, 235, 0.12);
+      color: #60A5FA;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .badge-enterprise {
+      background: rgba(245, 158, 11, 0.12);
+      color: #FBBF24;
+      border-color: rgba(245, 158, 11, 0.35);
+    }
+
+    /* ── Sticky Navbar ── */
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: rgba(11, 15, 25, 0.88);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle);
+      transition: var(--transition);
+    }
+
+    .nav-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 72px;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-decoration: none;
+    }
+
+    .nav-logo-box {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #1D4ED8 0%, #0F172A 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    }
+
+    .nav-logo-img {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+    }
+
+    .nav-brand-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .nav-brand-title {
+      font-family: var(--font-heading);
+      font-weight: 800;
+      font-size: 1.25rem;
+      color: #FFFFFF;
+      letter-spacing: -0.02em;
+    }
+
+    .nav-brand-title span {
+      color: #38BDF8;
+    }
+
+    .nav-brand-sub {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #64748B;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+    }
+
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.92rem;
+      transition: var(--transition);
+    }
+
+    .nav-links a:hover {
+      color: #FFFFFF;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* ── Hero Section ── */
+    .hero {
+      padding: 70px 0 60px;
+      position: relative;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 48px;
+      align-items: center;
+    }
+
+    .hero-content h1 {
+      font-size: 2.85rem;
+      line-height: 1.15;
+      margin: 18px 0 20px;
+    }
+
+    .hero-content h1 span {
+      background: linear-gradient(135deg, #60A5FA 0%, #38BDF8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-description {
+      font-size: 1.12rem;
+      color: #94A3B8;
+      margin-bottom: 32px;
+      max-width: 580px;
+    }
+
+    .hero-cta-group {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 36px;
+    }
+
+    .hero-security-points {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 24px;
+    }
+
+    .security-check-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.92rem;
+      color: #CBD5E1;
+      font-weight: 500;
+    }
+
+    .security-check-item svg {
+      width: 18px;
+      height: 18px;
+      fill: var(--brand-emerald);
+      flex-shrink: 0;
+    }
+
+    /* ── Hero Mockup Card Realista ── */
+    .hero-mockup-wrapper {
+      position: relative;
+    }
+
+    .mockup-window {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-elevated), 0 0 0 1px rgba(255, 255, 255, 0.04);
+      overflow: hidden;
+    }
+
+    .mockup-header {
+      background: #090D15;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .mockup-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .mockup-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .dot-red { background: #EF4444; }
+    .dot-yellow { background: #F59E0B; }
+    .dot-green { background: #10B981; }
+
+    .mockup-address {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: #64748B;
+      background: #111726;
+      padding: 3px 14px;
+      border-radius: 4px;
+      border: 1px solid #1E293B;
+    }
+
+    .mockup-body {
+      padding: 18px;
+    }
+
+    .mockup-stats-bar {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .mockup-stat-box {
+      background: #141B2D;
+      border: 1px solid #1E293B;
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .mockup-stat-val {
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: #38BDF8;
+    }
+
+    .mockup-stat-lbl {
+      font-size: 0.68rem;
+      color: #64748B;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .mockup-items-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .mockup-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: #101524;
+      border: 1px solid #1A2338;
+      border-radius: 8px;
+    }
+
+    .mockup-item-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .mockup-item-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: #1E293B;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+    }
+
+    .mockup-item-name {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #FFFFFF;
+    }
+
+    .mockup-item-user {
+      font-size: 0.72rem;
+      color: #64748B;
+      font-family: var(--font-mono);
+    }
+
+    .mockup-status-tag {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34D399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    /* ── Banner Gráfico Oficial ── */
+    .banner-preview-box {
+      margin-top: 14px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #1E293B;
+    }
+    .banner-preview-img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* ── Barra de Métricas & Confianza ── */
+    .trust-strip {
+      padding: 32px 0;
+      border-top: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--border-subtle);
+      background: #090D16;
+    }
+
+    .trust-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+      text-align: center;
+    }
+
+    .trust-metric {
+      font-family: var(--font-heading);
+      font-size: 2rem;
+      font-weight: 800;
+      color: #FFFFFF;
+      margin-bottom: 4px;
+    }
+
+    .trust-metric span {
+      color: var(--brand-blue);
+    }
+
+    .trust-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    /* ── Secciones Genéricas ── */
+    .section {
+      padding: 85px 0;
+      position: relative;
+    }
+
+    .section-header {
+      text-align: center;
+      max-width: 680px;
+      margin: 0 auto 56px;
+    }
+
+    .section-title {
+      font-size: 2.25rem;
+      margin: 14px 0 16px;
+    }
+
+    .section-subtitle {
+      font-size: 1.05rem;
+      color: var(--text-secondary);
+    }
+
+    /* ── Explicación Zero Knowledge ── */
+    .zk-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: center;
+    }
+
+    .zk-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 32px;
+      box-shadow: var(--shadow-card);
+    }
+
+    .zk-diagram-img {
+      width: 100%;
+      height: auto;
+      border-radius: 10px;
+      border: 1px solid var(--border-subtle);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .zk-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .zk-step-item {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    .zk-step-num {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #1E293B;
+      color: #38BDF8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+    }
+
+    .zk-step-text h4 {
+      font-size: 1.05rem;
+      margin-bottom: 4px;
+      color: #F8FAFC;
+    }
+
+    .zk-step-text p {
+      font-size: 0.9rem;
+      color: #94A3B8;
+    }
+
+    /* ── Features Grid ── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 28px;
+      transition: var(--transition);
+      box-shadow: var(--shadow-card);
+    }
+
+    .feature-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-highlight);
+      transform: translateY(-4px);
+    }
+
+    .feature-icon-box {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: #172033;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      border: 1px solid #1E293B;
+    }
+
+    .feature-icon-box svg {
+      width: 24px;
+      height: 24px;
+      fill: var(--brand-blue);
+    }
+
+    .feature-card h3 {
+      font-size: 1.2rem;
+      margin-bottom: 10px;
+    }
+
+    .feature-card p {
+      font-size: 0.92rem;
+      color: var(--text-secondary);
+    }
+
+    /* ── Acción Dual: Web App & Descarga Android ── */
+    .dual-action-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+    }
+
+    .action-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 36px;
+      box-shadow: var(--shadow-elevated);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .action-card-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .action-badge-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: rgba(37, 99, 235, 0.15);
+      border: 1px solid rgba(37, 99, 235, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+
+    .action-card h3 {
+      font-size: 1.45rem;
+    }
+
+    .action-card p {
+      font-size: 0.95rem;
+      margin-bottom: 24px;
+    }
+
+    .qr-download-container {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      background: #090D15;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border-subtle);
+      margin-bottom: 24px;
+    }
+
+    .qr-img {
+      width: 90px;
+      height: 90px;
+      background: #FFFFFF;
+      border-radius: 8px;
+      padding: 6px;
+      flex-shrink: 0;
+    }
+
+    .qr-text {
+      font-size: 0.88rem;
+      color: #94A3B8;
+    }
+
+    .qr-text strong {
+      color: #F8FAFC;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    /* ── Planes de Suscripción ── */
+    .billing-toggle-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 40px;
+    }
+
+    .billing-toggle-btn {
+      background: #141B2D;
+      border: 1px solid #1E293B;
+      padding: 4px;
+      border-radius: var(--radius-pill);
+      display: flex;
+    }
+
+    .toggle-opt {
+      padding: 8px 18px;
+      border-radius: var(--radius-pill);
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #94A3B8;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      transition: var(--transition);
+    }
+
+    .toggle-opt.active {
+      background: var(--brand-blue);
+      color: #FFFFFF;
+    }
+
+    .save-badge {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34D399;
+      font-size: 0.75rem;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .pricing-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 32px 28px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      box-shadow: var(--shadow-card);
+      transition: var(--transition);
+    }
+
+    .pricing-card.popular {
+      background: #101728;
+      border-color: #2563EB;
+      box-shadow: 0 8px 30px rgba(37, 99, 235, 0.25);
+      transform: scale(1.03);
+    }
+
+    .popular-tag {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #2563EB;
+      color: #FFFFFF;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 4px 14px;
+      border-radius: var(--radius-pill);
+    }
+
+    .pricing-card-header {
+      margin-bottom: 24px;
+    }
+
+    .plan-name {
+      font-size: 1.25rem;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .plan-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      min-height: 40px;
+    }
+
+    .plan-price-box {
+      margin: 18px 0;
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .plan-currency {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #94A3B8;
+    }
+
+    .plan-amount {
+      font-size: 2.4rem;
+      font-weight: 800;
+      color: #FFFFFF;
+      font-family: var(--font-heading);
+    }
+
+    .plan-period {
+      font-size: 0.85rem;
+      color: #64748B;
+    }
+
+    .plan-features-list {
+      list-style: none;
+      margin-bottom: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .plan-feature-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 0.88rem;
+      color: #CBD5E1;
+    }
+
+    .plan-feature-item svg {
+      width: 16px;
+      height: 16px;
+      fill: var(--brand-blue);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    /* ── Medios de Pago ── */
+    .payments-strip {
+      margin-top: 40px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 24px 32px;
+      text-align: center;
+    }
+
+    .payments-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #94A3B8;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .payment-badges-row {
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .payment-chip {
+      background: #141B2D;
+      border: 1px solid #1E293B;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #E2E8F0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ── FAQ Acordeón ── */
+    .faq-container {
+      max-width: 800px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .faq-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      transition: var(--transition);
+    }
+
+    .faq-question {
+      padding: 20px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: #F8FAFC;
+      user-select: none;
+    }
+
+    .faq-icon {
+      width: 20px;
+      height: 20px;
+      transition: transform 0.25s ease;
+      fill: #64748B;
+    }
+
+    .faq-item.active .faq-icon {
+      transform: rotate(180deg);
+      fill: var(--brand-blue);
+    }
+
+    .faq-answer {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+      background: #0C111C;
+    }
+
+    .faq-answer-inner {
+      padding: 0 24px 20px;
+      font-size: 0.95rem;
+      color: #94A3B8;
+      line-height: 1.6;
+    }
+
+    /* ── Footer Oficial Tech Innova ── */
+    .footer {
+      background: #06090F;
+      border-top: 1px solid var(--border-subtle);
+      padding: 60px 0 30px;
+      color: var(--text-secondary);
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr 1fr 1fr;
+      gap: 40px;
+      margin-bottom: 48px;
+    }
+
+    .footer-brand p {
+      font-size: 0.88rem;
+      color: #94A3B8;
+      margin: 14px 0 18px;
+      max-width: 340px;
+    }
+
+    .ti-badge-link {
+      display: inline-block;
+      transition: opacity 0.2s;
+    }
+    .ti-badge-link:hover {
+      opacity: 0.85;
+    }
+
+    .ti-banner-img {
+      max-height: 38px;
+      width: auto;
+      border-radius: 6px;
+    }
+
+    .footer-col h4 {
+      font-size: 0.95rem;
+      color: #F8FAFC;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .footer-col a {
+      display: block;
+      color: #94A3B8;
+      text-decoration: none;
+      font-size: 0.88rem;
+      margin-bottom: 10px;
+      transition: var(--transition);
+    }
+
+    .footer-col a:hover {
+      color: #38BDF8;
+      transform: translateX(2px);
+    }
+
+    .footer-bottom {
+      border-top: 1px solid #141B2D;
+      padding-top: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-size: 0.82rem;
+      color: #64748B;
+    }
+
+    /* ── Botón Flotante de WhatsApp ── */
+    .whatsapp-float {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 58px;
+      height: 58px;
+      background: #25D366;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px rgba(37, 211, 102, 0.45);
+      z-index: 1000;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      text-decoration: none;
+    }
+
+    .whatsapp-float:hover {
+      transform: scale(1.08);
+      box-shadow: 0 8px 24px rgba(37, 211, 102, 0.6);
+    }
+
+    .whatsapp-float svg {
+      width: 32px;
+      height: 32px;
+      fill: #FFFFFF;
+    }
+
+    /* ── Responsive Mobile ── */
+    @media (max-width: 960px) {
+      .hero-grid, .zk-layout, .dual-action-grid {
+        grid-template-columns: 1fr;
+      }
+      .features-grid, .pricing-grid {
+        grid-template-columns: 1fr;
+      }
+      .pricing-card.popular {
+        transform: none;
+      }
+      .trust-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .footer-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+      .nav-links {
+        display: none;
+      }
+      .hero-content h1 {
+        font-size: 2.1rem;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .footer-grid {
+        grid-template-columns: 1fr;
+      }
+      .trust-grid {
+        grid-template-columns: 1fr;
+      }
+      .hero-cta-group {
+        flex-direction: column;
+      }
+      .hero-cta-group .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       NAVBAR OFICIAL
+       ══════════════════════════════════════════════════════════════ -->
+  <header class="navbar">
+    <div class="container nav-container">
+      <a href="#inicio" class="nav-brand">
+        <div class="nav-logo-box">
+          <img src="assets/images/novakey_logo.png" alt="NovaKey Logo" class="nav-logo-img">
+        </div>
+        <div class="nav-brand-text">
+          <div class="nav-brand-title">Nova<span>Key</span></div>
+          <div class="nav-brand-sub">by Tech Innova</div>
+        </div>
+      </a>
+
+      <nav class="nav-links">
+        <a href="#seguridad">Seguridad</a>
+        <a href="#funciones">Funciones</a>
+        <a href="#planes">Planes</a>
+        <a href="#descargar">Descarga</a>
+        <a href="#faq">Preguntas</a>
+      </nav>
+
+      <div class="nav-actions">
+        <!-- Acceso directo a la Bóveda Web (Login) -->
+        <a href="./app/" class="btn btn-primary" title="Iniciar sesión en la Bóveda Web">
+          <svg style="width:16px;height:16px;fill:currentColor;" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+          Bóveda Web (Login)
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       HERO SECTION
+       ══════════════════════════════════════════════════════════════ -->
+  <section class="hero" id="inicio">
+    <div class="container">
+      <div class="hero-grid">
+        <div class="hero-content">
+          <div class="badge">
+            <svg style="width:14px;height:14px;fill:currentColor;" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+            Arquitectura Cero-Conocimiento · Grado Militar
+          </div>
+          <h1>Tus Contraseñas bajo Cero Conocimiento. <span>Privacidad Absoluta.</span></h1>
+          <p class="hero-description">
+            NovaKey cifra y descifra tus claves exclusivamente en tu dispositivo usando <strong>AES-256-GCM</strong> y <strong>Argon2id</strong>. Ni Tech Innova ni nadie más puede leer tus contraseñas en la nube.
+          </p>
+
+          <div class="hero-cta-group">
+            <a href="./app/" class="btn btn-primary">
+              <svg style="width:18px;height:18px;fill:currentColor;" viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+              Abrir Bóveda Web
+            </a>
+            <a href="#descargar" class="btn btn-secondary">
+              <svg style="width:18px;height:18px;fill:currentColor;" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+              Descargar APK Android
+            </a>
+          </div>
+
+          <div class="hero-security-points">
+            <div class="security-check-item">
+              <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+              Derivación de clave con Argon2id + Sal criptográfica de 256 bits única por usuario.
+            </div>
+            <div class="security-check-item">
+              <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+              Sincronización multi-dispositivo en tiempo real (Android, Web y Windows).
+            </div>
+            <div class="security-check-item">
+              <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+              Autenticación en dos pasos (2FA) con PIN de 6 dígitos verificado por correo.
+            </div>
+          </div>
+        </div>
+
+        <!-- Mockup Visual de la Bóveda -->
+        <div class="hero-mockup-wrapper">
+          <div class="mockup-window">
+            <div class="mockup-header">
+              <div class="mockup-dots">
+                <div class="mockup-dot dot-red"></div>
+                <div class="mockup-dot dot-yellow"></div>
+                <div class="mockup-dot dot-green"></div>
+              </div>
+              <div class="mockup-address">https://novakey.tech-innova.online/app/</div>
+              <div style="font-size:0.75rem; color:#10B981; font-weight:700;">🔒 AES-GCM</div>
+            </div>
+            <div class="mockup-body">
+              <div class="mockup-stats-bar">
+                <div class="mockup-stat-box">
+                  <div class="mockup-stat-val">Zero</div>
+                  <div class="mockup-stat-lbl">Conocimiento</div>
+                </div>
+                <div class="mockup-stat-box">
+                  <div class="mockup-stat-val">256-bit</div>
+                  <div class="mockup-stat-lbl">Cifrado Militar</div>
+                </div>
+                <div class="mockup-stat-box">
+                  <div class="mockup-stat-val">Realtime</div>
+                  <div class="mockup-stat-lbl">Sync Activo</div>
+                </div>
+              </div>
+
+              <div class="mockup-items-list">
+                <div class="mockup-item">
+                  <div class="mockup-item-left">
+                    <div class="mockup-item-icon">🌐</div>
+                    <div>
+                      <div class="mockup-item-name">Portal de Administración Cloud</div>
+                      <div class="mockup-item-user">admin@tech-innova.online</div>
+                    </div>
+                  </div>
+                  <div class="mockup-status-tag">Protegido</div>
+                </div>
+                <div class="mockup-item">
+                  <div class="mockup-item-left">
+                    <div class="mockup-item-icon">📡</div>
+                    <div>
+                      <div class="mockup-item-name">Router Mikrotik Principal (Foto Etiqueta)</div>
+                      <div class="mockup-item-user">192.168.1.1 · Con foto cifrada</div>
+                    </div>
+                  </div>
+                  <div class="mockup-status-tag">Hardware</div>
+                </div>
+                <div class="mockup-item">
+                  <div class="mockup-item-left">
+                    <div class="mockup-item-icon">💼</div>
+                    <div>
+                      <div class="mockup-item-name">Banca Empresarial BCP</div>
+                      <div class="mockup-item-user">tesoreria@tech-innova.pe</div>
+                    </div>
+                  </div>
+                  <div class="mockup-status-tag">Bóveda</div>
+                </div>
+              </div>
+
+              <!-- Banner de Seguridad Gráfico -->
+              <div class="banner-preview-box">
+                <img src="assets/images/novakey_hero_banner.jpg" alt="Infraestructura de Seguridad NovaKey" class="banner-preview-img">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       BARRA DE CONFIANZA Y MÉTRICAS
+       ══════════════════════════════════════════════════════════════ -->
+  <section class="trust-strip">
+    <div class="container">
+      <div class="trust-grid">
+        <div>
+          <div class="trust-metric">256<span>-bit</span></div>
+          <div class="trust-label">Cifrado Autenticado AES-GCM</div>
+        </div>
+        <div>
+          <div class="trust-metric">64<span>MB</span></div>
+          <div class="trust-label">Memoria Argon2id Anti-Fuerza Bruta</div>
+        </div>
+        <div>
+          <div class="trust-metric">100<span>%</span></div>
+          <div class="trust-label">Custodia Soberana de tus Datos</div>
+        </div>
+        <div>
+          <div class="trust-metric">0<span>ms</span></div>
+          <div class="trust-label">Latencia en Memoria Volátil Segura</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       EXPLICACIÓN ZERO KNOWLEDGE
+       ══════════════════════════════════════════════════════════════ -->
+  <section class="section" id="seguridad">
+    <div class="container">
+      <div class="section-header">
+        <span class="badge">Matemática Criptográfica</span>
+        <h2 class="section-title">¿Qué significa realmente Cero-Conocimiento?</h2>
+        <p class="section-subtitle">
+          A diferencia de los gestores tradicionales en la nube, NovaKey nunca tiene acceso a tu contraseña maestra ni a tus credenciales sin cifrar.
+        </p>
+      </div>
+
+      <div class="zk-layout">
+        <div>
+          <img src="assets/images/novakey_zk_diagram.jpg" alt="Diagrama de Arquitectura Zero-Knowledge NovaKey" class="zk-diagram-img">
+        </div>
+
+        <div class="zk-steps">
+          <div class="zk-step-item">
+            <div class="zk-step-num">1</div>
+            <div class="zk-step-text">
+              <h4>Derivación en tu Dispositivo</h4>
+              <p>Tu contraseña maestra se combina con una sal aleatoria de 256 bits generada al registrarte y pasa por el motor <strong>Argon2id</strong> en tu procesador local.</p>
+            </div>
+          </div>
+
+          <div class="zk-step-item">
+            <div class="zk-step-num">2</div>
+            <div class="zk-step-text">
+              <h4>Bifurcación HKDF (RFC 5869)</h4>
+              <p>Se generan dos ramas independientes: una clave que cifra los datos en memoria RAM (AES-256-GCM) y un hash verificador que viaja al servidor.</p>
+            </div>
+          </div>
+
+          <div class="zk-step-item">
+            <div class="zk-step-num">3</div>
+            <div class="zk-step-text">
+              <h4>Inmunidad ante Filtraciones de Servidor</h4>
+              <p>La base de datos en Supabase solo almacena bloques binarios cifrados opacos. Incluso si la nube fuera intervenida, nadie podrá descifrar ni una sola contraseña.</p>
+            </div>
+          </div>
+
+          <div class="zk-step-item">
+            <div class="zk-step-num">4</div>
+            <div class="zk-step-text">
+              <h4>Auto-Bloqueo y Purgado de Memoria (Zeroize)</h4>
+              <p>Al cerrar sesión o por inactividad prolongada, todas las claves criptográficas se purgan de la memoria RAM del equipo de forma irreversible.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       CARACTERÍSTICAS Y FUNCIONES
+       ══════════════════════════════════════════════════════════════ -->
+  <section class="section" id="funciones" style="background:#090D16;">
+    <div class="container">
+      <div class="section-header">
+        <span class="badge">Funcionalidades de Elite</span>
+        <h2 class="section-title">Diseñado para la vida real y entornos IT</h2>
+        <p class="section-subtitle">
+          Herramientas pensadas para usuarios exigentes, administradores de sistemas y pequeñas empresas.
+        </p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon-box">
+            <svg viewBox="0 0 24 24"><path d="M12 18c3.31 0 6-2.69 6-6s-2.69-6-6-6-6 2.69-6 6 2.69 6 6 6zm0-10c2.21 0 4 1.79 4 4s-1.79 4-4 4-4-1.79-4-4 1.79-4 4-4zM9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm11 15H4V6h4.05l1.83-2h4.24l1.83 2H20v11z"/></svg>
+          </div>
+          <h3>Foto de Etiquetas de Hardware</h3>
+          <p>Toma fotos a etiquetas de routers, módems o equipos de red. La imagen se codifica y cifra en tu dispositivo con la misma clave maestra.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-box">
+            <svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+          </div>
+          <h3>Sincronización en Vivo</h3>
+          <p>Crea o edita una contraseña en tu móvil Android y vela reflejada instantáneamente en tu navegador Web sin presionar recargar.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-box">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+          </div>
+          <h3>Importación Inteligente .txt</h3>
+          <p>Migra tus archivos de texto plano o respaldos antiguos. Reconocimiento inteligente de herencia de títulos y previsualización editable.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-box">
+            <svg viewBox="0 0 24 24"><path d="M17.81 4.47c-.08 0-.16-.02-.23-.06C15.66 3.42 14 3 12.01 3c-1.98 0-3.86.47-5.78 1.47-.2.11-.46.06-.57-.15-.11-.2-.06-.46.15-.57C7.89 2.69 9.88 2.2 12.01 2.2c2.1 0 3.88.45 5.96 1.5.21.11.28.37.17.58-.08.12-.21.19-.33.19zM2.85 10.59c-.21-.08-.32-.31-.24-.52.88-2.31 2.37-4.14 4.43-5.45.19-.12.44-.06.56.13.12.19.06.44-.13.56-1.92 1.22-3.3 2.92-4.12 5.06-.07.17-.25.27-.43.27-.03-.01-.05-.02-.07-.05zm18.3 0c-.02.03-.04.04-.07.05-.18 0-.36-.1-.43-.27-.82-2.14-2.2-3.84-4.12-5.06-.19-.12-.25-.37-.13-.56.12-.19.37-.25.56-.13 2.06 1.31 3.55 3.14 4.43 5.45.08.21-.03.44-.24.52zM12 6.5c-3.79 0-7.17 2.13-8.82 5.5-.1.2-.34.29-.54.19-.2-.1-.29-.34-.19-.54C4.24 8.04 7.89 5.7 12 5.7s7.76 2.34 9.55 5.95c.1.2.01.44-.19.54-.2.1-.44.01-.54-.19C19.17 8.63 15.79 6.5 12 6.5z"/></svg>
+          </div>
+          <h3>Autenticación Biométrica</h3>
+          <p>Desbloqueo rápido mediante huella digital o reconocimiento facial en Android (Android Keystore) y Windows Hello con protección por TPM.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-box">
+            <svg viewBox="0 0 24 24"><path d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+          </div>
+          <h3>Generador de Entropía</h3>
+          <p>Crea contraseñas criptográficamente seguras con mayúsculas, minúsculas, números y símbolos seleccionables para evitar reutilización.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-box">
+            <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+          </div>
+          <h3>Exportación y Respaldo JSON</h3>
+          <p>Descarga tus contraseñas cifradas o expórtalas en formato JSON estructurado cuando lo requieras, sin ataduras a proveedores.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       ACCESO APLICACIÓN WEB Y DESCARGA ANDROID
+       ══════════════════════════════════════════════════════════════ -->
+  <section class="section" id="descargar">
+    <div class="container">
+      <div class="section-header">
+        <span class="badge">Disponibilidad Inmediata</span>
+        <h2 class="section-title">Accede en cualquier dispositivo</h2>
+        <p class="section-subtitle">
+          Utiliza la versión Web en tiempo real o instala la aplicación móvil en tu smartphone Android.
+        </p>
+      </div>
+
+      <div class="dual-action-grid">
+        <!-- Tarjeta Web -->
+        <div class="action-card">
+          <div>
+            <div class="action-card-header">
+              <div class="action-badge-icon">💻</div>
+              <div>
+                <h3>Versión Web Cloud</h3>
+                <span style="font-size:0.85rem; color:#38BDF8; font-weight:700;">Acceso directo sin instalación</span>
+              </div>
+            </div>
+            <p>
+              Inicia sesión con tu correo electrónico y tu contraseña maestra. Compatible con Google Chrome, Microsoft Edge, Brave, Mozilla Firefox y Safari.
+            </p>
+            <div style="background:#090D15; padding:16px; border-radius:12px; border:1px solid #1E293B; margin-bottom:24px;">
+              <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                <span style="font-size:0.82rem; color:#94A3B8;">Dirección oficial:</span>
+                <span style="font-size:0.82rem; color:#10B981; font-weight:700;">HTTPS 100% Verificado</span>
+              </div>
+              <code style="font-family:var(--font-mono); color:#F8FAFC; font-size:0.9rem;">https://novakey.tech-innova.online/app/</code>
+            </div>
+          </div>
+          <a href="./app/" class="btn btn-primary" style="width:100%;">
+            🚀 Iniciar Sesión en la Bóveda Web
+          </a>
+        </div>
+
+        <!-- Tarjeta Android APK -->
+        <div class="action-card">
+          <div>
+            <div class="action-card-header">
+              <div class="action-badge-icon">📱</div>
+              <div>
+                <h3>Aplicación Android (APK)</h3>
+                <span style="font-size:0.85rem; color:#10B981; font-weight:700;">Instalación directa v1.0.0</span>
+              </div>
+            </div>
+            <p>
+              Lleva tus contraseñas en tu bolsillo con desbloqueo biométrico por huella. Escanea el código QR con la cámara de tu teléfono o descarga el archivo directamente.
+            </p>
+
+            <div class="qr-download-container">
+              <img src="assets/images/qr_download_apk.png" alt="QR Descargar NovaKey APK" class="qr-img">
+              <div class="qr-text">
+                <strong>Escanear para Descargar</strong>
+                Apunta con la cámara de tu celular Android para descargar el archivo APK de instalación inmediata.
+              </div>
+            </div>
+          </div>
+          <a href="https://github.com/techinnovareg-lgtm/NovaKey/releases/download/v1.0.0-milestone/NovaKey-v1.0.0.apk" class="btn btn-emerald" style="width:100%;" download>
+            📥 Descargar NovaKey-v1.0.0.apk (24 MB)
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       PLANES Y PRECIOS
+       ══════════════════════════════════════════════════════════════ -->
+  <section class="section" id="planes" style="background:#090D16;">
+    <div class="container">
+      <div class="section-header">
+        <span class="badge">Suscripciones Flexibles</span>
+        <h2 class="section-title">Elige el plan ideal para tu seguridad</h2>
+        <p class="section-subtitle">
+          Comienza gratis para uso personal y mejora tu capacidad con soporte técnico oficial de Tech Innova.
+        </p>
+      </div>
+
+      <!-- Selector Mensual / Anual -->
+      <div class="billing-toggle-wrapper">
+        <div class="billing-toggle-btn">
+          <button class="toggle-opt active" id="btnMonthly" onclick="setBilling(false)">Mensual</button>
+          <button class="toggle-opt" id="btnAnnual" onclick="setBilling(true)">Anual</button>
+        </div>
+        <span class="save-badge">Ahorra 17% (2 meses gratis)</span>
+      </div>
+
+      <div class="pricing-grid">
+        <!-- Plan Starter -->
+        <div class="pricing-card">
+          <div class="pricing-card-header">
+            <div class="plan-name">Starter</div>
+            <div class="plan-desc">Uso personal y respaldo básico esencial.</div>
+            <div class="plan-price-box">
+              <span class="plan-amount">S/ 0</span>
+              <span class="plan-period">/ gratis de por vida</span>
+            </div>
+          </div>
+          <ul class="plan-features-list">
+            <li class="plan-feature-item">
+              <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              Hasta 30 contraseñas guardadas
+            </li>
+            <li class="plan-feature-item">
+              <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              Hasta 3 fotos de etiquetas físicas
+            </li>
+            <li class="plan-feature-item">
+              <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              Sincronización Web + Android
+            </li>
+            <li class="plan-feature-item">
+              <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              Cifrado AES-256-GCM Zero-Knowledge
+            </li>
+            <li class="plan-feature-item">
+              <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              PIN de verificación 2FA al correo
+            </li>
+          </ul>
+          <a href="./app/" class="btn btn-secondary" style="width:100%;">
+            Comenzar Gratis
+          </a>
+        </div>
+
+        <!-- Plan Pro (Popular) -->
+        <div class="pricing-card popular">
+          <div class="popular-tag">Más Popular</div>
+          <div class="pricing-card-header">
+            <div class="plan-name" style="color:#38BDF8;">Pro Individual</div>
+            <div class="plan-desc">Para profesionales, administradores y usuarios avanzados.</div>
+            <div class="plan-price-box">
+              <span class="plan-currency">S/</span>
+              <span class="plan-amount" id="pricePro">9.90</span>
+              <span class="plan-period" id="periodPro">/ mes</span>
+            </div>
+          </div>
+          <ul class="plan-features-list">
+            <li class="plan-feature-item">
+              <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              <strong>Contraseñas ILIMITADAS</strong>
+            </li>
+            <li class="plan-feature-item">
+              <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              <strong>Fotos de etiquetas ILIMITADAS</strong>
+            </li>
+            <li class="plan-feature-item">
+              <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              Sincronización multi-dispositivo sin límites
+            </li>
+            <li class="plan-feature-item">
+              <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              Importación/Exportación TXT y JSON
+            </li>
+            <li class="plan-feature-item">
+              <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              Soporte prioritario Tech Innova
+            </li>
+          </ul>
+          <a href="https://wa.me/51947515529?text=Hola%20Tech%20Innova,%20deseo%20contratar%20el%20Plan%20Pro%20Individual%20de%20NovaKey" target="_blank" class="btn btn-primary" style="width:100%;">
+            Contratar Plan Pro
+          </a>
+        </div>
+
+        <!-- Plan Business -->
+        <div class="pricing-card">
+          <div class="pricing-card-header">
+            <div class="plan-name">Business / Pyme</div>
+            <div class="plan-desc">Para empresas, estudios, comercios y equipos de TI.</div>
+            <div class="plan-price-box">
+              <span class="plan-currency">S/</span>
+              <span class="plan-amount" id="priceBus">29.90</span>
+              <span class="plan-period" id="periodBus">/ mes</span>
+            </div>
+          </div>
+          <ul class="plan-features-list">
+            <li class="plan-feature-item">
+              <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              Todo lo del Plan Pro incluido
+            </li>
+            <li class="plan-feature-item">
+              <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              Soporte para múltiples dispositivos de equipo
+            </li>
+            <li class="plan-feature-item">
+              <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              Auditoría y soporte técnico dedicado
+            </li>
+            <li class="plan-feature-item">
+              <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              Facturación comercial o recibo
+            </li>
+            <li class="plan-feature-item">
+              <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              SLA de atención preferencial
+            </li>
+          </ul>
+          <a href="https://wa.me/51947515529?text=Hola%20Tech%20Innova,%20deseo%20contratar%20el%20Plan%20Business%20para%20mi%20empresa%20en%20NovaKey" target="_blank" class="btn btn-secondary" style="width:100%;">
+            Contactar Ventas
+          </a>
+        </div>
+      </div>
+
+      <!-- Medios de Pago -->
+      <div class="payments-strip">
+        <div class="payments-title">Medios de Pago 100% Factibles y Disponibles</div>
+        <div class="payment-badges-row">
+          <div class="payment-chip">🟣 Yape</div>
+          <div class="payment-chip">🔵 Plin</div>
+          <div class="payment-chip">🏛️ SIP Interbancario</div>
+          <div class="payment-chip">🟧 BCP</div>
+          <div class="payment-chip">🟩 Interbank</div>
+          <div class="payment-chip">🪙 Binance (USDT Crypto)</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       PREGUNTAS FRECUENTES (FAQ)
+       ══════════════════════════════════════════════════════════════ -->
+  <section class="section" id="faq">
+    <div class="container">
+      <div class="section-header">
+        <span class="badge">Resolución de Dudas</span>
+        <h2 class="section-title">Preguntas Frecuentes</h2>
+        <p class="section-subtitle">Todo lo que necesitas saber sobre la seguridad y el funcionamiento de NovaKey.</p>
+      </div>
+
+      <div class="faq-container">
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFaq(this)">
+            ¿Qué sucede si olvido mi contraseña maestra?
+            <svg class="faq-icon" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+          </div>
+          <div class="faq-answer">
+            <div class="faq-answer-inner">
+              Debido al estricto estándar <strong>Zero-Knowledge</strong>, ni Tech Innova ni nadie tiene copia de tu clave maestra ni puede descifrar tus datos. Tu clave maestra es la única llave matemática que puede abrir tu bóveda. Te recomendamos memorizarla o guardarla en un lugar físico seguro.
+            </div>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFaq(this)">
+            ¿Puede el equipo de Tech Innova ver mis contraseñas o fotos?
+            <svg class="faq-icon" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+          </div>
+          <div class="faq-answer">
+            <div class="faq-answer-inner">
+              <strong>Rotundamente no.</strong> Cada credencial, nota y fotografía se cifra en la memoria de tu dispositivo antes de enviarse a la base de datos de Supabase. El servidor solo almacena texto cifrado ilegible acompañado de un nonce y un tag de autenticación.
+            </div>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFaq(this)">
+            ¿Cómo se activa un plan Pro o Business?
+            <svg class="faq-icon" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+          </div>
+          <div class="faq-answer">
+            <div class="faq-answer-inner">
+              Te registras con tu correo en la Web o App (se te asigna el Plan Starter gratuito). Luego contactas a soporte de Tech Innova por WhatsApp (+51 947 515 529), realizas el pago por Yape, Plin, BCP, Interbank o Binance, y nuestro Superadministrador activa tu plan. En tu próximo inicio de sesión verás automáticamente el mensaje de felicitaciones y tus nuevos beneficios ilimitados.
+            </div>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFaq(this)">
+            ¿Cómo funciona la autenticación por PIN al correo (2FA)?
+            <svg class="faq-icon" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+          </div>
+          <div class="faq-answer">
+            <div class="faq-answer-inner">
+              Cuando intentas iniciar sesión desde un nuevo navegador o dispositivo, el sistema despacha automáticamente un PIN de seguridad de 6 dígitos a tu correo oficial mediante nuestro servidor SMTP verificado (tech-innova.online). El código expira en 5 minutos y es de un solo uso para protegerte contra ataques.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       FOOTER OFICIAL TECH INNOVA
+       ══════════════════════════════════════════════════════════════ -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <img src="assets/images/novakey_logo.png" alt="NovaKey" style="width:34px; height:34px; border-radius:8px;">
+            <span style="font-family:var(--font-heading); font-weight:800; font-size:1.25rem; color:#FFFFFF;">NovaKey</span>
+          </div>
+          <p>
+            Plataforma de ciberseguridad y bóveda de credenciales Zero-Knowledge. Desarrollado con los más altos estándares tecnológicos por <strong>Tech Innova</strong> en Perú 🇵🇪.
+          </p>
+          <div style="margin-top:16px;">
+            <a href="https://tech-innova.online" target="_blank" rel="noopener noreferrer" class="ti-badge-link" title="Tech Innova Oficial">
+              <img src="assets/images/Baner.png" alt="Banner Corporativo Tech Innova" class="ti-banner-img">
+            </a>
+          </div>
+        </div>
+
+        <div class="footer-col">
+          <h4>Navegación</h4>
+          <a href="#inicio">Inicio</a>
+          <a href="#seguridad">Seguridad Zero-Knowledge</a>
+          <a href="#funciones">Funciones</a>
+          <a href="#planes">Planes de Suscripción</a>
+          <a href="#descargar">Descargar Android APK</a>
+          <a href="./app/">Acceso Bóveda Web (Login)</a>
+        </div>
+
+        <div class="footer-col">
+          <h4>Ecosistema Tech Innova</h4>
+          <a href="https://tech-innova.online" target="_blank" rel="noopener noreferrer">Web Oficial Tech Innova</a>
+          <a href="https://tech-innova.vercel.app/" target="_blank" rel="noopener noreferrer">Web Alternativa</a>
+          <a href="https://tech-innova.online/tienda" target="_blank" rel="noopener noreferrer">Tienda Tech Innova</a>
+          <a href="https://tech-innova.vercel.app/tienda" target="_blank" rel="noopener noreferrer">Tienda Alternativa</a>
+          <a href="https://techinnovareg-lgtm.github.io/YapeVoice_Landing" target="_blank" rel="noopener noreferrer">App Yape Voice</a>
+        </div>
+
+        <div class="footer-col">
+          <h4>Soporte & Redes</h4>
+          <a href="https://wa.me/51947515529" target="_blank" rel="noopener noreferrer">WhatsApp: +51 947 515 529</a>
+          <a href="mailto:tech.innova.reg@gmail.com">tech.innova.reg@gmail.com</a>
+          <a href="https://www.tiktok.com/@techinnova1" target="_blank" rel="noopener noreferrer">TikTok: @techinnova1</a>
+          <a href="https://www.youtube.com/@TechInnova-c9k" target="_blank" rel="noopener noreferrer">YouTube: @TechInnova-c9k</a>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>
+          © 2026 <strong>Tech Innova</strong>. Todos los derechos reservados. NovaKey es una marca de Tech Innova.
+        </div>
+        <div>
+          Soporte Oficial: +51 947 515 529 · Lima, Perú
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       BOTÓN FLOTANTE DE WHATSAPP
+       ══════════════════════════════════════════════════════════════ -->
+  <a href="https://wa.me/51947515529?text=Hola%20Tech%20Innova,%20deseo%20asistencia%20y%20consultar%20sobre%20NovaKey" class="whatsapp-float" target="_blank" rel="noopener noreferrer" aria-label="Contactar soporte por WhatsApp">
+    <svg viewBox="0 0 24 24">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.455 5.703 1.456h.004c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+    </svg>
+  </a>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       MOTOR JAVASCRIPT
+       ══════════════════════════════════════════════════════════════ -->
+  <script>
+    // 1. Selector Mensual / Anual
+    function setBilling(isAnnual) {
+      const btnM = document.getElementById('btnMonthly');
+      const btnA = document.getElementById('btnAnnual');
+      const pPro = document.getElementById('pricePro');
+      const perPro = document.getElementById('periodPro');
+      const pBus = document.getElementById('priceBus');
+      const perBus = document.getElementById('periodBus');
+
+      if (isAnnual) {
+        btnA.classList.add('active');
+        btnM.classList.remove('active');
+        pPro.textContent = '99.00';
+        perPro.textContent = '/ año (~S/ 8.25/mes)';
+        pBus.textContent = '299.00';
+        perBus.textContent = '/ año (~S/ 24.90/mes)';
+      } else {
+        btnM.classList.add('active');
+        btnA.classList.remove('active');
+        pPro.textContent = '9.90';
+        perPro.textContent = '/ mes';
+        pBus.textContent = '29.90';
+        perBus.textContent = '/ mes';
+      }
+    }
+
+    // 2. Acordeón FAQ
+    function toggleFaq(el) {
+      const item = el.parentElement;
+      const ans = item.querySelector('.faq-answer');
+      const isOpen = item.classList.contains('active');
+
+      document.querySelectorAll('.faq-item').forEach(i => {
+        i.classList.remove('active');
+        i.querySelector('.faq-answer').style.maxHeight = null;
+      });
+
+      if (!isOpen) {
+        item.classList.add('active');
+        ans.style.maxHeight = ans.scrollHeight + "px";
+      }
+    }
+  </script>
+</body>
+</html>
