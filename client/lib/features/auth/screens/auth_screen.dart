@@ -8,9 +8,11 @@ import '../../../core/crypto/crypto_engine.dart';
 import '../../../core/security/biometric_service.dart';
 import '../../../core/security/email_pin_service.dart';
 import '../../../core/security/secure_storage_service.dart';
+import '../../../core/security/recovery_kit_service.dart';
 import '../../../core/widgets/novakey_logo.dart';
 import '../../vault/widgets/tech_innova_credits.dart';
 import '../widgets/pin_verification_dialog.dart';
+import '../widgets/recovery_kit_dialog.dart';
 
 class AuthScreen extends StatefulWidget {
   final Function(SecretKey masterEncryptionKey, String email) onUnlockSuccess;
@@ -159,6 +161,316 @@ class _AuthScreenState extends State<AuthScreen> {
       _emailController.text = entered;
     }
 
+    // Ofrecer selección de método: Kit de Rescate de Emergencia (Autoservicio) vs Superadmin
+    final selectedMethod = await showDialog<String>(
+      context: context,
+      builder: (choiceCtx) => AlertDialog(
+        backgroundColor: const Color(0xFF0F141C),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF1F2937)),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.lock_reset_rounded, color: Color(0xFF38BDF8)),
+            SizedBox(width: 10),
+            Text('Recuperar Acceso a la Bóveda', style: TextStyle(color: Colors.white, fontSize: 16)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Selecciona el método de recuperación que deseas utilizar:',
+              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => Navigator.of(choiceCtx).pop('kit'),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF161F30),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.5)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.vpn_key_rounded, color: Color(0xFF38BDF8), size: 24),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Kit de Rescate de Emergencia', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: Colors.white)),
+                          SizedBox(height: 3),
+                          Text('Autoservicio Cero-Conocimiento instantáneo usando tu Clave de Rescate.', style: TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8))),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.chevron_right_rounded, color: Color(0xFF38BDF8)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => Navigator.of(choiceCtx).pop('superadmin'),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF161F30),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.5)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.support_agent_rounded, color: Color(0xFFF59E0B), size: 24),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Soporte y Superadmin Tech Innova', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: Colors.white)),
+                          SizedBox(height: 3),
+                          Text('Validación de titularidad por WhatsApp con PIN al correo y teléfono.', style: TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8))),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.chevron_right_rounded, color: Color(0xFFF59E0B)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(choiceCtx).pop(),
+            child: const Text('Cancelar'),
+          ),
+        ],
+      ),
+    );
+
+    if (selectedMethod == null || !mounted) return;
+
+    // MÉTODO 1: KIT DE RESCATE DE EMERGENCIA
+    if (selectedMethod == 'kit') {
+      final keyCtrl = TextEditingController();
+      final enteredKey = await showDialog<String>(
+        context: context,
+        builder: (kCtx) => AlertDialog(
+          backgroundColor: const Color(0xFF0F141C),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: Color(0xFF2563EB)),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.vpn_key_rounded, color: Color(0xFF38BDF8)),
+              SizedBox(width: 10),
+              Text('Ingresa tu Clave de Rescate', style: TextStyle(fontSize: 15, color: Colors.white)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Ingresa la clave de 24 caracteres de tu Kit de Emergencia (ej. NK-REC-XXXX-XXXX-...):',
+                style: TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: keyCtrl,
+                textCapitalization: TextCapitalization.characters,
+                style: const TextStyle(fontFamily: 'monospace', letterSpacing: 1.2),
+                decoration: const InputDecoration(
+                  labelText: 'Clave de Rescate de Emergencia',
+                  hintText: 'NK-REC-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX',
+                  prefixIcon: Icon(Icons.key_rounded),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(kCtx).pop(), child: const Text('Cancelar')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1D4ED8), foregroundColor: Colors.white),
+              onPressed: () {
+                final k = keyCtrl.text.trim().toUpperCase();
+                if (k.isNotEmpty) Navigator.of(kCtx).pop(k);
+              },
+              child: const Text('Verificar Clave'),
+            ),
+          ],
+        ),
+      );
+
+      if (enteredKey == null || !mounted) return;
+
+      setState(() {
+        _isLoading = true;
+        _statusMessage = 'Descifrando bóveda con Kit de Rescate Zero-Knowledge...';
+      });
+
+      try {
+        final salt = await CryptoEngine.deriveDeterministicSalt(email);
+        final recoveryPayload = await RecoveryKitService.getRecoveryPayload(email);
+
+        SecretKey? recoveredMek;
+        if (recoveryPayload != null) {
+          recoveredMek = await RecoveryKitService.decryptMekFromRecovery(
+            recoveryPayload: recoveryPayload,
+            recoveryKey: enteredKey,
+            salt: salt,
+          );
+        } else {
+          if (RecoveryKitService.isValidKeyFormat(enteredKey)) {
+            final derived = await CryptoEngine.deriveKeys(masterPassword: enteredKey, salt: salt);
+            recoveredMek = derived.masterEncryptionKey;
+          }
+        }
+
+        if (recoveredMek == null) {
+          throw Exception('La Clave de Rescate ingresada no es válida o no coincide con esta cuenta.');
+        }
+
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+
+        // Pedir nueva contraseña maestra
+        final newPassController = TextEditingController();
+        final confirmPassController = TextEditingController();
+
+        final resetSuccess = await showDialog<bool>(
+          context: context,
+          builder: (dlgCtx) => AlertDialog(
+            backgroundColor: const Color(0xFF131722),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(color: Color(0xFF1F2937)),
+            ),
+            title: const Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: Color(0xFF10B981)),
+                SizedBox(width: 10),
+                Text('Clave de Rescate Válida', style: TextStyle(fontSize: 16, color: Colors.white)),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  '¡Identidad criptográfica confirmada! Ingresa tu nueva contraseña maestra para proteger tu bóveda de aquí en adelante:',
+                  style: TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: newPassController,
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'Nueva Contraseña Maestra', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: confirmPassController,
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'Confirmar Contraseña', border: OutlineInputBorder()),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(dlgCtx).pop(false), child: const Text('Cancelar')),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1D4ED8), foregroundColor: Colors.white),
+                onPressed: () {
+                  final compErr = validatePasswordComplexity(newPassController.text);
+                  if (compErr != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(compErr), backgroundColor: Colors.red));
+                    return;
+                  }
+                  if (newPassController.text != confirmPassController.text) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Las contraseñas no coinciden')));
+                    return;
+                  }
+                  Navigator.of(dlgCtx).pop(true);
+                },
+                child: const Text('Guardar y Entrar'),
+              ),
+            ],
+          ),
+        );
+
+        if (resetSuccess == true && mounted) {
+          setState(() {
+            _isLoading = true;
+            _statusMessage = 'Aplicando nueva clave y re-encriptando bóveda...';
+          });
+
+          final newSalt = await CryptoEngine.deriveDeterministicSalt(email);
+          final newKeys = await CryptoEngine.deriveKeys(
+            masterPassword: newPassController.text,
+            salt: newSalt,
+          );
+          final newAuthPassword = 'NK_' + newKeys.authHashHex.substring(0, 32) + '!Aa1';
+
+          await _secureStorage.saveUserSalt(email, base64Encode(newSalt));
+          await _secureStorage.savePasswordVerifier(email, newKeys.authHashHex);
+          await _secureStorage.saveUserEmail(email);
+
+          final rawKeyBytes = await recoveredMek.extractBytes();
+          await _secureStorage.saveEncryptedMek(base64Encode(rawKeyBytes));
+          await _pinService.authorizeCurrentDevice(email);
+
+          // Actualizar payload de recuperación
+          final updatedPayload = await RecoveryKitService.encryptMekForRecovery(
+            masterEncryptionKey: recoveredMek,
+            recoveryKey: enteredKey,
+            salt: newSalt,
+          );
+          await RecoveryKitService.saveRecoveryData(
+            email: email,
+            payload: updatedPayload,
+            recoveryKey: enteredKey,
+          );
+
+          try {
+            final client = Supabase.instance.client;
+            if (client.auth.currentUser != null) {
+              await client.auth.updateUser(UserAttributes(password: newAuthPassword));
+            }
+          } catch (_) {}
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('✅ Bóveda recuperada y contraseña maestra reconfigurada con éxito.'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+
+          widget.onUnlockSuccess(recoveredMek, email);
+          return;
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error al procesar Kit de Rescate: $e'), backgroundColor: Colors.red),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
+      return;
+    }
+
+    // MÉTODO 2: PROTOCOLO CON SUPERADMIN
     setState(() {
       _isLoading = true;
       _statusMessage = 'Generando y despachando código PIN a tu correo...';
@@ -569,6 +881,29 @@ class _AuthScreenState extends State<AuthScreen> {
       final rawKeyBytes = await derivedKeys.masterEncryptionKey.extractBytes();
       await _secureStorage.saveEncryptedMek(base64Encode(rawKeyBytes));
       await _secureStorage.setBiometricsEnabled(true);
+
+      // Si es registro nuevo (! _isLogin), generamos y presentamos el Kit de Rescate de Emergencia
+      if (!_isLogin) {
+        final recoveryKey = RecoveryKitService.generateRecoveryKey();
+        final recoveryPayload = await RecoveryKitService.encryptMekForRecovery(
+          masterEncryptionKey: derivedKeys.masterEncryptionKey,
+          recoveryKey: recoveryKey,
+          salt: salt,
+        );
+        await RecoveryKitService.saveRecoveryData(
+          email: email,
+          payload: recoveryPayload,
+          recoveryKey: recoveryKey,
+        );
+        if (mounted) {
+          await RecoveryKitDialog.show(
+            context: context,
+            email: email,
+            recoveryKey: recoveryKey,
+            isInitialSetup: true,
+          );
+        }
+      }
 
       // 7. Acceder a la Bóveda en memoria
       widget.onUnlockSuccess(derivedKeys.masterEncryptionKey, email);

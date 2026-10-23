@@ -26,6 +26,7 @@ class VaultSyncService {
 
   List<VaultItem> _cachedItems = [];
   List<VaultItem> get currentItems => List.unmodifiable(_cachedItems);
+  SecretKey get masterEncryptionKey => _masterEncryptionKey;
 
   VaultSyncService({
     required SupabaseClient supabase,

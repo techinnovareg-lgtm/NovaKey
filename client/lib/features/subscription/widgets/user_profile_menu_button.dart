@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../../core/crypto/crypto_engine.dart';
+import '../../../core/security/recovery_kit_service.dart';
+import '../../auth/widgets/recovery_kit_dialog.dart';
+import '../../vault/services/vault_sync_service.dart';
 import '../models/user_subscription_profile.dart';
 import 'plans_showcase_dialog.dart';
 import 'superadmin_dashboard_dialog.dart';
@@ -10,6 +14,7 @@ class UserProfileMenuButton extends StatelessWidget {
   final VoidCallback onChangePassword;
   final Duration currentTimeout;
   final ValueChanged<Duration>? onTimeoutChanged;
+  final VaultSyncService? syncService;
 
   const UserProfileMenuButton({
     super.key,
@@ -18,6 +23,7 @@ class UserProfileMenuButton extends StatelessWidget {
     required this.onChangePassword,
     required this.currentTimeout,
     this.onTimeoutChanged,
+    this.syncService,
   });
 
   @override
@@ -74,6 +80,8 @@ class UserProfileMenuButton extends StatelessWidget {
           PlansShowcaseDialog.show(context, profile);
         } else if (val == 'superadmin') {
           SuperAdminDashboardDialog.show(context, profile);
+        } else if (val == 'recovery_kit') {
+          _showRecoveryKit(context);
         } else if (val == 'change_password') {
           onChangePassword();
         } else if (val == 'autolock') {
@@ -150,7 +158,19 @@ class UserProfileMenuButton extends StatelessWidget {
           ),
         ],
 
-        // 4. Cambiar Contraseña Maestra
+        // 4. Kit de Rescate de Emergencia (Zero-Knowledge)
+        const PopupMenuItem<String>(
+          value: 'recovery_kit',
+          child: Row(
+            children: [
+              Icon(Icons.vpn_key_rounded, size: 18, color: Color(0xFF10B981)),
+              SizedBox(width: 10),
+              Text('Kit de Rescate de Emergencia', style: TextStyle(fontSize: 13, color: Colors.white)),
+            ],
+          ),
+        ),
+
+        // 5. Cambiar Contraseña Maestra
         const PopupMenuItem<String>(
           value: 'change_password',
           child: Row(
@@ -162,7 +182,7 @@ class UserProfileMenuButton extends StatelessWidget {
           ),
         ),
 
-        // 5. Ajustar Autobloqueo
+        // 6. Ajustar Autobloqueo
         const PopupMenuItem<String>(
           value: 'autolock',
           child: Row(
@@ -192,6 +212,45 @@ class UserProfileMenuButton extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  Future<void> _showRecoveryKit(BuildContext context) async {
+    String? key = await RecoveryKitService.getSavedRecoveryKey(userEmail);
+    if ((key == null || key.isEmpty) && syncService != null) {
+      try {
+        final newKey = RecoveryKitService.generateRecoveryKey();
+        final salt = await CryptoEngine.deriveDeterministicSalt(userEmail);
+        final payload = await RecoveryKitService.encryptMekForRecovery(
+          masterEncryptionKey: syncService!.masterEncryptionKey,
+          recoveryKey: newKey,
+          salt: salt,
+        );
+        await RecoveryKitService.saveRecoveryData(
+          email: userEmail,
+          payload: payload,
+          recoveryKey: newKey,
+        );
+        key = newKey;
+      } catch (_) {}
+    }
+
+    if (context.mounted) {
+      if (key == null || key.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se encontró una clave de rescate guardada en este dispositivo.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+      await RecoveryKitDialog.show(
+        context: context,
+        email: userEmail,
+        recoveryKey: key,
+        isInitialSetup: false,
+      );
+    }
   }
 
   void _showAutoLockPicker(BuildContext context) {
