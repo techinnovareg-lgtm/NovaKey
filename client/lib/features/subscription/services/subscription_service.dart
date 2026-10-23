@@ -110,6 +110,7 @@ class SubscriptionService {
   }
 
   /// Verifica si el usuario tiene una notificación pendiente de activación de plan
+  /// Solo se debe mostrar una única vez inmediatamente después de contratar o renovar un plan
   static Future<String?> checkPendingUpgradeNotification(String email) async {
     final clean = email.trim().toLowerCase();
     final acc = getOrCreateAccountForEmail(clean);
@@ -117,19 +118,33 @@ class SubscriptionService {
     // Si sigue en Starter o es Superadmin no requiere anuncio de felicitación
     if (acc.plan == NovaKeyPlan.starter || acc.role == 'Superadmin') return null;
 
-    final prefs = await SharedPreferences.getInstance();
-    final key = '$_keyNotifiedPlanPrefix$clean';
-    final lastNotifiedPlan = prefs.getString(key);
+    // Solo mostrar si el plan tiene una activación o renovación pendiente no celebrada
+    if (!acc.hasPendingUpgradeCelebration) return null;
 
-    if (lastNotifiedPlan != acc.plan.name) {
-      // Registrar que ya se le notificó sobre este plan
-      await prefs.setString(key, acc.plan.name);
+    final prefs = await SharedPreferences.getInstance();
+    final key = '$_keyNotifiedPlanPrefix${clean}_${acc.plan.name}_${acc.expirationDate.millisecondsSinceEpoch}';
+    final alreadyShown = prefs.getBool(key) ?? false;
+
+    if (!alreadyShown) {
       return acc.plan.displayName;
+    } else {
+      acc.hasPendingUpgradeCelebration = false;
+      return null;
     }
-    return null;
   }
 
-  /// Permite al Superadmin cambiar el plan de un usuario y forzar la notificación en su próximo login
+  /// Registra que la notificación de felicitación ya fue mostrada y aceptada
+  static Future<void> markCelebrationAsShown(String email) async {
+    final clean = email.trim().toLowerCase();
+    final acc = getOrCreateAccountForEmail(clean);
+    acc.hasPendingUpgradeCelebration = false;
+
+    final prefs = await SharedPreferences.getInstance();
+    final key = '$_keyNotifiedPlanPrefix${clean}_${acc.plan.name}_${acc.expirationDate.millisecondsSinceEpoch}';
+    await prefs.setBool(key, true);
+  }
+
+  /// Permite al Superadmin cambiar el plan de un usuario y habilitar la felicitación única en su próximo login
   static Future<void> updateAccountPlan({
     required String email,
     required NovaKeyPlan newPlan,
@@ -141,11 +156,12 @@ class SubscriptionService {
     acc.plan = newPlan;
     acc.billingCycle = billingCycle;
     acc.expirationDate = expirationDate;
+    acc.hasPendingUpgradeCelebration = true; // Solo activo al renovar o cambiar plan
     acc.refreshStatus();
 
-    // Resetear marca para que al usuario le salga el mensaje de felicitaciones al iniciar sesión
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('$_keyNotifiedPlanPrefix$clean');
+    final key = '$_keyNotifiedPlanPrefix${clean}_${newPlan.name}_${expirationDate.millisecondsSinceEpoch}';
+    await prefs.remove(key);
   }
 
   /// Elimina permanentemente una cuenta de cliente (excepto Superadmin)

@@ -123,12 +123,13 @@ class VaultSyncService {
     final userId = _supabase.auth.currentUser?.id;
     if (isCloudConfigured && userId != null) {
       try {
-        final response = await _supabase
+        final dynamic rawResponse = await _supabase
             .from('vault_items')
             .select('*')
             .eq('user_id', userId)
-            .eq('is_deleted', false)
-            .order('server_updated_at', ascending: false);
+            .eq('is_deleted', false);
+
+        final List<dynamic> response = (rawResponse is List) ? rawResponse : [];
 
         for (final row in response) {
           try {
@@ -144,18 +145,50 @@ class VaultSyncService {
             );
 
             final item = VaultItem.fromDecryptedJson(
-              id: row['id'] as String,
+              id: (row['id'] ?? '').toString(),
               jsonStr: decryptedJson,
-              version: row['version'] as int,
-              isFavorite: row['is_favorite'] as bool,
-              isDeleted: row['is_deleted'] as bool,
-              updatedAt: DateTime.parse(row['server_updated_at'] as String),
+              version: (row['version'] as num?)?.toInt() ?? 1,
+              isFavorite: row['is_favorite'] == true,
+              isDeleted: row['is_deleted'] == true,
+              updatedAt: DateTime.tryParse((row['client_updated_at'] ?? row['server_updated_at'] ?? '').toString()) ?? DateTime.now().toUtc(),
             );
 
-            // Supabase prevalece si es más reciente
-            itemMap[item.id] = item;
-          } catch (_) {
+            // Supabase prevalece si no existe en local o si es igual/más reciente
+            if (!itemMap.containsKey(item.id) ||
+                item.updatedAt.isAfter(itemMap[item.id]!.updatedAt)) {
+              itemMap[item.id] = item;
+            }
+          } catch (itemErr) {
+            debugPrint('Aviso al descifrar elemento de la nube: $itemErr');
             continue;
+          }
+        }
+
+        // 3. SINCRONIZACIÓN ASCENDENTE AUTOMÁTICA (Push local -> nube):
+        // Sincroniza cualquier elemento local previamente guardado (ej. importación TXT previa)
+        // que aún no exista en Supabase, haciéndolo disponible de inmediato en todos los dispositivos.
+        for (final localItem in itemMap.values.toList()) {
+          final existsOnCloud = response.any((r) => r['id'] == localItem.id);
+          if (!existsOnCloud && !localItem.isDeleted) {
+            try {
+              final enc = await CryptoEngine.encrypt(
+                plainText: localItem.toSensitiveJson(),
+                key: _masterEncryptionKey,
+              );
+              await _supabase.from('vault_items').upsert({
+                'id': localItem.id,
+                'user_id': userId,
+                'payload_ciphertext': enc.ciphertextBase64,
+                'nonce': enc.nonceBase64,
+                'auth_tag': enc.authTagBase64,
+                'is_favorite': localItem.isFavorite,
+                'is_deleted': localItem.isDeleted,
+                'version': localItem.version,
+                'client_updated_at': localItem.updatedAt.toIso8601String(),
+              });
+            } catch (syncUpErr) {
+              debugPrint('Aviso al respaldar credencial en la nube: $syncUpErr');
+            }
           }
         }
       } catch (e) {
@@ -224,11 +257,9 @@ class VaultSyncService {
         await _supabase.from('vault_items').upsert({
           'id': item.id,
           'user_id': userId,
-          'title_ciphertext': encryptedTitle.ciphertextBase64,
           'payload_ciphertext': encrypted.ciphertextBase64,
           'nonce': encrypted.nonceBase64,
           'auth_tag': encrypted.authTagBase64,
-          'category': item.category,
           'is_favorite': item.isFavorite,
           'is_deleted': item.isDeleted,
           'version': item.version,
@@ -254,7 +285,8 @@ class VaultSyncService {
         try {
           await _supabase.from('vault_items').update({
             'is_deleted': true,
-          }).eq('id', id);
+            'client_updated_at': DateTime.now().toUtc().toIso8601String(),
+          }).eq('id', id).eq('user_id', userId);
         } catch (_) {}
       }
     }

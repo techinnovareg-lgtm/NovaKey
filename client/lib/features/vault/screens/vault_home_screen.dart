@@ -72,6 +72,9 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> {
   }
 
   void _showUpgradeCelebrationDialog(String planName) {
+    // Marcar como mostrada de forma permanente para que no vuelva a aparecer en futuros logins
+    SubscriptionService.markCelebrationAsShown(widget.syncService.userEmail);
+
     showDialog(
       context: context,
       barrierDismissible: false,

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/crypto/crypto_engine.dart';
 import '../../../core/security/biometric_service.dart';
 import '../../../core/security/email_pin_service.dart';
@@ -58,11 +59,10 @@ class _AuthScreenState extends State<AuthScreen> {
       if (email != null && email.isNotEmpty) {
         _emailController.text = email;
       } else {
-        // Correo predeterminado para el acceso del Superadmin (Tech Innova)
-        _emailController.text = 'tech.innova.reg@gmail.com';
+        _emailController.text = '';
       }
       setState(() {
-        _isLogin = true;
+        _isLogin = (email != null && email.isNotEmpty);
       });
     }
   }
@@ -312,12 +312,29 @@ class _AuthScreenState extends State<AuthScreen> {
     });
 
     try {
-      // 1. Verificar si requiere verificación de PIN por correo
-      final isDeviceAuth = await _pinService.isDeviceAuthorized(email);
-      final hasRegisteredBefore = (await _secureStorage.getUserSalt(email)) != null;
+      // 1. Obtener sal persistida o derivar sal determinista por cuenta para sincronización multi-dispositivo
+      String? saltBase64 = await _secureStorage.getUserSalt(email);
+      Uint8List salt;
 
-      final bool requiresPin = !_isLogin // Caso 1: Registro por primera vez
-          || (!isDeviceAuth && hasRegisteredBefore); // Caso 2: Nuevo dispositivo detectado
+      if (saltBase64 == null) {
+        salt = await CryptoEngine.deriveDeterministicSalt(email);
+        saltBase64 = base64Encode(salt);
+        await _secureStorage.saveUserSalt(email, saltBase64);
+      } else {
+        salt = base64Decode(saltBase64);
+      }
+
+      // 2. Derivar la clave criptográfica mediante Argon2id + HKDF
+      final derivedKeys = await CryptoEngine.deriveKeys(
+        masterPassword: password,
+        salt: salt,
+      );
+
+      final derivedAuthPassword = 'NK_' + derivedKeys.authHashHex.substring(0, 32) + '!Aa1';
+
+      // 3. Verificar si requiere verificación de PIN por correo (2FA para nuevo dispositivo o registro)
+      final isDeviceAuth = await _pinService.isDeviceAuthorized(email);
+      final bool requiresPin = !_isLogin || !isDeviceAuth;
 
       if (requiresPin) {
         setState(() => _statusMessage = 'Enviando código de seguridad PIN a tu correo...');
@@ -345,6 +362,13 @@ class _AuthScreenState extends State<AuthScreen> {
           throw Exception('No se completó la verificación del código PIN enviado a tu correo.');
         }
 
+        try {
+          final client = Supabase.instance.client;
+          if (client.auth.currentUser != null) {
+            await client.auth.updateUser(UserAttributes(password: derivedAuthPassword));
+          }
+        } catch (_) {}
+
         if (mounted) {
           setState(() {
             _isLoading = true;
@@ -352,30 +376,24 @@ class _AuthScreenState extends State<AuthScreen> {
           });
         }
       } else {
-        setState(() => _statusMessage = 'Derivando clave con Argon2id (Zero-Knowledge)...');
+        setState(() => _statusMessage = 'Verificando seguridad de acceso Zero-Knowledge...');
       }
 
-      // 2. Obtener sal y verificador existente
-      String? saltBase64 = await _secureStorage.getUserSalt(email);
+      // 4. Intentar autenticación silenciosa con Supabase Auth si aún no hay sesión activa
+      try {
+        final client = Supabase.instance.client;
+        if (client.auth.currentUser == null) {
+          await client.auth.signInWithPassword(
+            email: email,
+            password: derivedAuthPassword,
+          );
+        }
+      } catch (authErr) {
+        debugPrint('Aviso de autenticación Supabase Auth en segundo plano: $authErr');
+      }
+
+      // 5. Verificación de seguridad de la contraseña maestra (Zero-Knowledge Verifier)
       String? savedVerifier = await _secureStorage.getPasswordVerifier(email);
-      Uint8List salt;
-
-      if (saltBase64 == null) {
-        // Primera vez que se registra esta cuenta
-        salt = CryptoEngine.generateRandomSalt();
-        saltBase64 = base64Encode(salt);
-        await _secureStorage.saveUserSalt(email, saltBase64);
-      } else {
-        salt = base64Decode(saltBase64);
-      }
-
-      // 3. Derivar la clave criptográfica mediante Argon2id
-      final derivedKeys = await CryptoEngine.deriveKeys(
-        masterPassword: password,
-        salt: salt,
-      );
-
-      // 4. Verificación de seguridad de la contraseña maestra (Zero-Knowledge Verifier)
       if (savedVerifier != null) {
         if (derivedKeys.authHashHex != savedVerifier) {
           throw Exception('Contraseña maestra incorrecta. Por favor verifica mayúsculas/minúsculas y caracteres.');
@@ -401,14 +419,14 @@ class _AuthScreenState extends State<AuthScreen> {
         await _secureStorage.savePasswordVerifier(email, derivedKeys.authHashHex);
       }
 
-      // 5. Autorizar dispositivo y guardar credenciales para acceso biométrico futuro
+      // 6. Autorizar dispositivo y guardar credenciales para acceso biométrico futuro
       await _pinService.authorizeCurrentDevice(email);
       await _secureStorage.saveUserEmail(email);
       final rawKeyBytes = await derivedKeys.masterEncryptionKey.extractBytes();
       await _secureStorage.saveEncryptedMek(base64Encode(rawKeyBytes));
       await _secureStorage.setBiometricsEnabled(true);
 
-      // 6. Conceder acceso inmediato a la Bóveda en memoria
+      // 7. Conceder acceso inmediato a la Bóveda en memoria
       widget.onUnlockSuccess(derivedKeys.masterEncryptionKey, email);
     } catch (e) {
       if (mounted) {
@@ -500,6 +518,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     TextField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
                       decoration: const InputDecoration(
                         labelText: 'Correo Electrónico de Registro',
                         prefixIcon: Icon(Icons.email_outlined),
@@ -510,6 +529,12 @@ class _AuthScreenState extends State<AuthScreen> {
                     TextField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) {
+                        if (!_isLoading) {
+                          _submitAuth();
+                        }
+                      },
                       decoration: InputDecoration(
                         labelText: 'Contraseña Maestra',
                         prefixIcon: const Icon(Icons.lock_rounded),

@@ -52,6 +52,16 @@ class CryptoEngine {
     return Uint8List.fromList(secretKey.bytes);
   }
 
+  /// Deriva una sal criptográfica determinista de 32 bytes para sincronización multi-dispositivo
+  /// basada en el correo electrónico del usuario y un pepper criptográfico constante.
+  static Future<Uint8List> deriveDeterministicSalt(String email) async {
+    final cleanEmail = email.trim().toLowerCase();
+    const pepper = 'NovaKey:TechInnova:ZeroKnowledge:v1:DeterministicSaltPepper';
+    final bytes = utf8.encode('$pepper:$cleanEmail');
+    final hash = await _sha256.hash(bytes);
+    return Uint8List.fromList(hash.bytes);
+  }
+
   /// Deriva la Master Key usando Argon2id o PBKDF2-HMAC-SHA256 con bifurcación HKDF
   ///
   /// Parámetros por defecto calibrados para alto costo contra ataques GPU/ASIC:

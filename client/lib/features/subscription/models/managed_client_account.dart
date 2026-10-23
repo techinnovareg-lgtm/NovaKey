@@ -15,6 +15,7 @@ class ManagedClientAccount {
   DateTime expirationDate;
   int deviceCount;
   bool isArchived;
+  bool hasPendingUpgradeCelebration;
 
   ManagedClientAccount({
     required this.id,
@@ -29,6 +30,7 @@ class ManagedClientAccount {
     required this.expirationDate,
     this.deviceCount = 2,
     this.isArchived = false,
+    this.hasPendingUpgradeCelebration = false,
   });
 
   /// Calcula automáticamente la fecha de vencimiento según el ciclo de facturación
@@ -72,6 +74,7 @@ class ManagedClientAccount {
   /// Extiende el contrato en meses o años adicionales y desarchiva automáticamente
   void extendContract({int months = 1, int years = 0}) {
     isArchived = false;
+    hasPendingUpgradeCelebration = true;
     DateTime base = expirationDate.isAfter(DateTime.now()) ? expirationDate : DateTime.now();
     if (years > 0) {
       expirationDate = DateTime(base.year + years, base.month, base.day);
