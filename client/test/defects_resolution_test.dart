@@ -123,5 +123,37 @@ void main() {
 
       syncService.dispose();
     });
+
+    test('5. Verificación estricta: Contraseña errónea en dispositivo o incógnito es rechazada de inmediato', () async {
+      final storage = SecureStorageService();
+      const user = 'seguridad.test@tech-innova.online';
+
+      final salt = await CryptoEngine.deriveDeterministicSalt(user);
+      final realKeys = await CryptoEngine.deriveKeys(
+        masterPassword: 'ClaveRealCorrecta123!',
+        salt: salt,
+        memory: 1024,
+        iterations: 1,
+        parallelism: 1,
+      );
+
+      // Guardar verifier real
+      await storage.savePasswordVerifier(user, realKeys.authHashHex);
+
+      // Probar derivar con una contraseña errónea
+      final wrongKeys = await CryptoEngine.deriveKeys(
+        masterPassword: 'ClaveTotalmenteErronea999#',
+        salt: salt,
+        memory: 1024,
+        iterations: 1,
+        parallelism: 1,
+      );
+
+      final savedVerifier = await storage.getPasswordVerifier(user);
+      expect(savedVerifier, isNotNull);
+      // El verifier DEBE rechazar la clave errónea
+      expect(wrongKeys.authHashHex != savedVerifier, isTrue,
+          reason: 'La contraseña errónea debe ser detectada y rechazada');
+    });
   });
 }

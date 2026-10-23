@@ -216,11 +216,12 @@ class _AuthScreenState extends State<AuthScreen> {
           _statusMessage = 'Aplicando nueva clave y protegiendo bóveda...';
         });
 
-        final newSalt = CryptoEngine.generateRandomSalt();
+        final newSalt = await CryptoEngine.deriveDeterministicSalt(email);
         final newKeys = await CryptoEngine.deriveKeys(
           masterPassword: newPassController.text,
           salt: newSalt,
         );
+        final newAuthPassword = 'NK_' + newKeys.authHashHex.substring(0, 32) + '!Aa1';
 
         await _secureStorage.saveUserSalt(email, base64Encode(newSalt));
         await _secureStorage.savePasswordVerifier(email, newKeys.authHashHex);
@@ -229,6 +230,13 @@ class _AuthScreenState extends State<AuthScreen> {
         final rawKeyBytes = await newKeys.masterEncryptionKey.extractBytes();
         await _secureStorage.saveEncryptedMek(base64Encode(rawKeyBytes));
         await _pinService.authorizeCurrentDevice(email);
+
+        try {
+          final client = Supabase.instance.client;
+          if (client.auth.currentUser != null) {
+            await client.auth.updateUser(UserAttributes(password: newAuthPassword));
+          }
+        } catch (_) {}
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -332,12 +340,43 @@ class _AuthScreenState extends State<AuthScreen> {
 
       final derivedAuthPassword = 'NK_' + derivedKeys.authHashHex.substring(0, 32) + '!Aa1';
 
-      // 3. Verificar si requiere verificación de PIN por correo (2FA para nuevo dispositivo o registro)
+      // 3. PASO CRÍTICO DE SEGURIDAD: VERIFICAR CONTRASEÑA ANTES DE ENVIAR PIN O CONCEDER ACCESO
+      if (_isLogin) {
+        final savedVerifier = await _secureStorage.getPasswordVerifier(email);
+        if (savedVerifier != null) {
+          // Caso A: Dispositivo conocido con verifier guardado localmente
+          if (derivedKeys.authHashHex != savedVerifier) {
+            throw Exception('Contraseña maestra incorrecta. Por favor verifica mayúsculas/minúsculas y caracteres.');
+          }
+        } else {
+          // Caso B: Dispositivo nuevo / ventana incógnito (sin verifier local).
+          // Se debe validar primero contra Supabase Auth en la nube con la contraseña derivada
+          try {
+            final client = Supabase.instance.client;
+            final authRes = await client.auth.signInWithPassword(
+              email: email,
+              password: derivedAuthPassword,
+            );
+            if (authRes.user == null) {
+              throw Exception('Contraseña maestra incorrecta. Por favor verifica mayúsculas/minúsculas y caracteres.');
+            }
+          } on AuthException catch (_) {
+            throw Exception('Contraseña maestra incorrecta. Por favor verifica mayúsculas/minúsculas y caracteres.');
+          } catch (e) {
+            if (e.toString().contains('Contraseña maestra incorrecta')) rethrow;
+            throw Exception('Contraseña maestra incorrecta o cuenta no registrada.');
+          }
+        }
+      }
+
+      // 4. SOLO SI LA CONTRASEÑA ES 100% CORRECTA: Verificar 2FA para nuevo dispositivo o registro
       final isDeviceAuth = await _pinService.isDeviceAuthorized(email);
       final bool requiresPin = !_isLogin || !isDeviceAuth;
 
       if (requiresPin) {
-        setState(() => _statusMessage = 'Enviando código de seguridad PIN a tu correo...');
+        setState(() => _statusMessage = !_isLogin
+            ? 'Enviando código de verificación a tu correo...'
+            : 'Nuevo dispositivo detectado. Enviando PIN de seguridad a tu correo...');
         final purpose = !_isLogin
             ? PinVerificationPurpose.registration
             : PinVerificationPurpose.newDevice;
@@ -362,71 +401,38 @@ class _AuthScreenState extends State<AuthScreen> {
           throw Exception('No se completó la verificación del código PIN enviado a tu correo.');
         }
 
-        try {
-          final client = Supabase.instance.client;
-          if (client.auth.currentUser != null) {
-            await client.auth.updateUser(UserAttributes(password: derivedAuthPassword));
-          }
-        } catch (_) {}
-
         if (mounted) {
           setState(() {
             _isLoading = true;
-            _statusMessage = 'Derivando clave con Argon2id (Zero-Knowledge)...';
+            _statusMessage = 'Autorizando dispositivo y preparando bóveda...';
           });
         }
       } else {
         setState(() => _statusMessage = 'Verificando seguridad de acceso Zero-Knowledge...');
       }
 
-      // 4. Intentar autenticación silenciosa con Supabase Auth si aún no hay sesión activa
+      // 5. Asegurar sincronización de sesión y contraseña en Supabase Auth
       try {
         final client = Supabase.instance.client;
-        if (client.auth.currentUser == null) {
+        if (client.auth.currentUser != null) {
+          await client.auth.updateUser(UserAttributes(password: derivedAuthPassword));
+        } else {
           await client.auth.signInWithPassword(
             email: email,
             password: derivedAuthPassword,
           );
         }
-      } catch (authErr) {
-        debugPrint('Aviso de autenticación Supabase Auth en segundo plano: $authErr');
-      }
+      } catch (_) {}
 
-      // 5. Verificación de seguridad de la contraseña maestra (Zero-Knowledge Verifier)
-      String? savedVerifier = await _secureStorage.getPasswordVerifier(email);
-      if (savedVerifier != null) {
-        if (derivedKeys.authHashHex != savedVerifier) {
-          throw Exception('Contraseña maestra incorrecta. Por favor verifica mayúsculas/minúsculas y caracteres.');
-        }
-      } else {
-        // Migración o registro nuevo: si existían datos cifrados previos en local, verificar que descifren
-        final existingVaultJson = await _secureStorage.getLocalEncryptedVault(email);
-        if (existingVaultJson != null && existingVaultJson.trim().length > 10) {
-          try {
-            final List<dynamic> list = jsonDecode(existingVaultJson);
-            if (list.isNotEmpty && list[0]['encrypted'] != null) {
-              final payload = EncryptedPayload.fromMap(list[0]['encrypted'] as Map<dynamic, dynamic>);
-              await CryptoEngine.decrypt(
-                payload: payload,
-                key: derivedKeys.masterEncryptionKey,
-              );
-            }
-          } catch (_) {
-            throw Exception('Contraseña maestra incorrecta. No coincide con los datos guardados en esta bóveda.');
-          }
-        }
-        // Guardar verificador para futuras validaciones
-        await _secureStorage.savePasswordVerifier(email, derivedKeys.authHashHex);
-      }
-
-      // 6. Autorizar dispositivo y guardar credenciales para acceso biométrico futuro
+      // 6. Autorizar dispositivo y guardar credenciales
       await _pinService.authorizeCurrentDevice(email);
+      await _secureStorage.savePasswordVerifier(email, derivedKeys.authHashHex);
       await _secureStorage.saveUserEmail(email);
       final rawKeyBytes = await derivedKeys.masterEncryptionKey.extractBytes();
       await _secureStorage.saveEncryptedMek(base64Encode(rawKeyBytes));
       await _secureStorage.setBiometricsEnabled(true);
 
-      // 7. Conceder acceso inmediato a la Bóveda en memoria
+      // 7. Acceder a la Bóveda en memoria
       widget.onUnlockSuccess(derivedKeys.masterEncryptionKey, email);
     } catch (e) {
       if (mounted) {
