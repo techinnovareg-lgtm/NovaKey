@@ -1514,11 +1514,11 @@
               </div>
               <div class="free-perk-item">
                 <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-                <span><strong>Hasta 30 contraseñas guardadas:</strong> Tus cuentas indispensables de correo, bancos, plataformas y servicios organizadas y blindadas.</span>
+                <span><strong>Hasta 20 contraseñas guardadas:</strong> Tus cuentas indispensables de correo, bancos, plataformas y servicios organizadas y blindadas.</span>
               </div>
               <div class="free-perk-item">
                 <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-                <span><strong>Hasta 3 fotos de hardware cifradas:</strong> Guarda fotos de etiquetas de routers, módems o equipos con sus credenciales vinculadas.</span>
+                <span><strong>Hasta 2 fotos de hardware cifradas:</strong> Guarda fotos de etiquetas de routers, módems o equipos con sus credenciales vinculadas.</span>
               </div>
               <div class="free-perk-item">
                 <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
@@ -1549,12 +1549,12 @@
 
             <div class="free-restriction-item">
               <span>🔒</span>
-              <div><strong>Límite de 30 contraseñas:</strong> Pensado para uso personal individual o prueba del servicio. Una vez alcanzado el límite, se requiere ampliar de plan para almacenar más.</div>
+              <div><strong>Límite de 20 contraseñas:</strong> Pensado para uso personal individual o prueba del servicio. Una vez alcanzado el límite, se requiere ampliar de plan para almacenar más.</div>
             </div>
 
             <div class="free-restriction-item">
               <span>📸</span>
-              <div><strong>Límite de 3 fotos de equipos:</strong> Permite proteger los routers esenciales. Para registrar switches, servidores o cámaras adicionales, amplía tu capacidad.</div>
+              <div><strong>Límite de 2 fotos de equipos:</strong> Permite proteger los routers esenciales. Para registrar switches, servidores o cámaras adicionales, amplía tu capacidad.</div>
             </div>
 
             <div class="free-restriction-item">
@@ -1819,13 +1819,23 @@
         </p>
       </div>
 
-      <!-- Selector Mensual / Anual -->
-      <div class="billing-toggle-wrapper">
-        <div class="billing-toggle-btn">
-          <button class="toggle-opt active" id="btnMonthly" onclick="setBilling(false)">Mensual</button>
-          <button class="toggle-opt" id="btnAnnual" onclick="setBilling(true)">Anual</button>
+      <!-- Selectores: Moneda y Frecuencia de Facturación -->
+      <div style="display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:16px; margin-bottom:28px;">
+        <!-- Selector de Moneda (PEN, USD, EUR con redondeo por exceso) -->
+        <div class="billing-toggle-btn" style="background:#131B2B; border:1px solid #233554;">
+          <button class="toggle-opt active" id="currPEN" onclick="setCurrency('PEN')">🇵🇪 Soles (S/)</button>
+          <button class="toggle-opt" id="currUSD" onclick="setCurrency('USD')">🇺🇸 Dólares ($)</button>
+          <button class="toggle-opt" id="currEUR" onclick="setCurrency('EUR')">🇪🇺 Euros (€)</button>
         </div>
-        <span class="save-badge">Ahorra 17% (2 meses gratis)</span>
+
+        <!-- Selector Mensual / Anual -->
+        <div class="billing-toggle-wrapper" style="margin-bottom:0;">
+          <div class="billing-toggle-btn">
+            <button class="toggle-opt active" id="btnMonthly" onclick="setBilling(false)">Mensual</button>
+            <button class="toggle-opt" id="btnAnnual" onclick="setBilling(true)">Anual</button>
+          </div>
+          <span class="save-badge">Ahorra 17% (2 meses gratis)</span>
+        </div>
       </div>
 
       <div class="pricing-grid">
@@ -1835,18 +1845,19 @@
             <div class="plan-name">Starter</div>
             <div class="plan-desc">Uso personal y respaldo básico esencial.</div>
             <div class="plan-price-box">
-              <span class="plan-amount">S/ 0</span>
+              <span class="plan-currency" id="currStarter">S/</span>
+              <span class="plan-amount" id="priceStarter">0</span>
               <span class="plan-period">/ gratis de por vida</span>
             </div>
           </div>
           <ul class="plan-features-list">
             <li class="plan-feature-item">
               <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-              Hasta 30 contraseñas guardadas
+              Hasta 20 contraseñas guardadas
             </li>
             <li class="plan-feature-item">
               <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-              Hasta 3 fotos de etiquetas físicas
+              Hasta 2 fotos de etiquetas físicas
             </li>
             <li class="plan-feature-item">
               <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
@@ -1873,7 +1884,7 @@
             <div class="plan-name" style="color:#38BDF8;">Pro Individual</div>
             <div class="plan-desc">Para profesionales, administradores y usuarios avanzados.</div>
             <div class="plan-price-box">
-              <span class="plan-currency">S/</span>
+              <span class="plan-currency" id="currPro">S/</span>
               <span class="plan-amount" id="pricePro">9.90</span>
               <span class="plan-period" id="periodPro">/ mes</span>
             </div>
@@ -1900,7 +1911,7 @@
               Soporte prioritario Tech Innova
             </li>
           </ul>
-          <a href="https://wa.me/51947515529?text=Hola%20Tech%20Innova,%20deseo%20contratar%20el%20Plan%20Pro%20Individual%20de%20NovaKey" target="_blank" class="btn btn-primary" style="width:100%;">
+          <a href="https://wa.me/51947515529?text=Hola%20Tech%20Innova,%20deseo%20contratar%20el%20Plan%20Pro%20Individual%20de%20NovaKey" target="_blank" class="btn btn-primary" id="linkPro" style="width:100%;">
             Contratar Plan Pro
           </a>
         </div>
@@ -1911,7 +1922,7 @@
             <div class="plan-name">Business / Pyme</div>
             <div class="plan-desc">Para empresas, estudios, comercios y equipos de TI.</div>
             <div class="plan-price-box">
-              <span class="plan-currency">S/</span>
+              <span class="plan-currency" id="currBus">S/</span>
               <span class="plan-amount" id="priceBus">29.90</span>
               <span class="plan-period" id="periodBus">/ mes</span>
             </div>
@@ -1938,7 +1949,7 @@
               SLA de atención preferencial
             </li>
           </ul>
-          <a href="https://wa.me/51947515529?text=Hola%20Tech%20Innova,%20deseo%20contratar%20el%20Plan%20Business%20para%20mi%20empresa%20en%20NovaKey" target="_blank" class="btn btn-secondary" style="width:100%;">
+          <a href="https://wa.me/51947515529?text=Hola%20Tech%20Innova,%20deseo%20contratar%20el%20Plan%20Business%20para%20mi%20empresa%20en%20NovaKey" target="_blank" class="btn btn-secondary" id="linkBus" style="width:100%;">
             Contactar Ventas
           </a>
         </div>
@@ -1978,7 +1989,20 @@
           </div>
           <div class="faq-answer">
             <div class="faq-answer-inner">
-              Debido al estricto estándar <strong>Zero-Knowledge</strong>, ni Tech Innova ni nadie tiene copia de tu clave maestra ni puede descifrar tus datos. Tu clave maestra es la única llave matemática que puede abrir tu bóveda. Te recomendamos memorizarla o guardarla en un lugar físico seguro.
+              Debido al estricto estándar criptográfico <strong>Zero-Knowledge</strong>, ni Tech Innova ni nadie tiene copia de tu clave maestra ni puede descifrar tus datos en los servidores. No obstante, si olvidas tu clave, <strong>el Superadministrador tiene la posibilidad de resetear tu clave únicamente si comprueba fehacientemente que eres el dueño de esa cuenta</strong>.<br><br>
+              Para este protocolo de verificación de titularidad e identidad:
+              <ol style="margin: 10px 0 10px 20px; line-height: 1.6;">
+                <li>Selecciona la opción <strong>"¿Olvidaste tu contraseña maestra?"</strong> que está implementada directamente en el login de NovaKey.</li>
+                <li>El sistema generará y despachará de inmediato un <strong>código PIN de seguridad de 6 dígitos</strong> a tu correo electrónico registrado.</li>
+                <li>Deberás enviar al número oficial de soporte técnico de Tech Innova por WhatsApp (<strong>+51 947 515 529</strong>):
+                  <ul style="margin-top:6px; margin-left:16px;">
+                    <li><strong>El correo electrónico</strong> del usuario titular.</li>
+                    <li><strong>Tu número de teléfono</strong> registrado.</li>
+                    <li><strong>El código PIN de seguridad</strong> recibido en tu correo.</li>
+                  </ul>
+                </li>
+              </ol>
+              Una vez comprobada tu titularidad por el Superadministrador, se autorizará el restablecimiento para que generes tu nueva contraseña maestra y reconfigures tu acceso seguro.
             </div>
           </div>
         </div>
@@ -2095,30 +2119,110 @@
        MOTOR JAVASCRIPT
        ══════════════════════════════════════════════════════════════ -->
   <script>
-    // 1. Selector Mensual / Anual
-    function setBilling(isAnnual) {
-      const btnM = document.getElementById('btnMonthly');
-      const btnA = document.getElementById('btnAnnual');
+    // 1. Selector Multi-Moneda y Frecuencia de Facturación (Soles, Dólares, Euros por exceso)
+    let currentCurrency = 'PEN';
+    let currentIsAnnual = false;
+
+    const pricingData = {
+      PEN: {
+        symbol: 'S/ ',
+        starter: { amount: '0', period: '/ gratis de por vida' },
+        pro: {
+          monthly: { amount: '9.90', period: '/ mes' },
+          annual: { amount: '99.00', period: '/ año (~S/ 8.25/mes)' }
+        },
+        business: {
+          monthly: { amount: '29.90', period: '/ mes' },
+          annual: { amount: '299.00', period: '/ año (~S/ 24.90/mes)' }
+        }
+      },
+      USD: {
+        symbol: '$ ',
+        starter: { amount: '0', period: '/ gratis de por vida' },
+        pro: {
+          monthly: { amount: '3.00', period: '/ mes' },
+          annual: { amount: '29.00', period: '/ año (~$2.42/mes)' }
+        },
+        business: {
+          monthly: { amount: '9.00', period: '/ mes' },
+          annual: { amount: '89.00', period: '/ año (~$7.42/mes)' }
+        }
+      },
+      EUR: {
+        symbol: '€ ',
+        starter: { amount: '0', period: '/ gratis de por vida' },
+        pro: {
+          monthly: { amount: '3.00', period: '/ mes' },
+          annual: { amount: '28.00', period: '/ año (~€2.33/mes)' }
+        },
+        business: {
+          monthly: { amount: '8.00', period: '/ mes' },
+          annual: { amount: '85.00', period: '/ año (~€7.08/mes)' }
+        }
+      }
+    };
+
+    function updatePricingDisplay() {
+      const data = pricingData[currentCurrency];
+      const proData = currentIsAnnual ? data.pro.annual : data.pro.monthly;
+      const busData = currentIsAnnual ? data.business.annual : data.business.monthly;
+
       const pPro = document.getElementById('pricePro');
       const perPro = document.getElementById('periodPro');
+      const currPro = document.getElementById('currPro');
+
       const pBus = document.getElementById('priceBus');
       const perBus = document.getElementById('periodBus');
+      const currBus = document.getElementById('currBus');
+
+      const currStarter = document.getElementById('currStarter');
+
+      if (pPro) pPro.textContent = proData.amount;
+      if (perPro) perPro.textContent = proData.period;
+      if (currPro) currPro.textContent = data.symbol;
+
+      if (pBus) pBus.textContent = busData.amount;
+      if (perBus) perBus.textContent = busData.period;
+      if (currBus) currBus.textContent = data.symbol;
+
+      if (currStarter) currStarter.textContent = data.symbol;
+
+      // Actualizar URLs de WhatsApp
+      const currLabel = currentCurrency === 'PEN' ? 'Soles' : currentCurrency === 'USD' ? 'Dólares' : 'Euros';
+      const cycleLabel = currentIsAnnual ? 'Anual' : 'Mensual';
+
+      const linkPro = document.getElementById('linkPro');
+      if (linkPro) {
+        linkPro.href = `https://wa.me/51947515529?text=${encodeURIComponent('Hola Tech Innova, deseo contratar el Plan Pro Individual (' + cycleLabel + ') de NovaKey en ' + currLabel + ' (' + data.symbol + proData.amount + ')')}`;
+      }
+
+      const linkBus = document.getElementById('linkBus');
+      if (linkBus) {
+        linkBus.href = `https://wa.me/51947515529?text=${encodeURIComponent('Hola Tech Innova, deseo contratar el Plan Business (' + cycleLabel + ') para mi empresa en ' + currLabel + ' (' + data.symbol + busData.amount + ')')}`;
+      }
+    }
+
+    function setCurrency(curr) {
+      currentCurrency = curr;
+      document.querySelectorAll('#currPEN, #currUSD, #currEUR').forEach(btn => btn.classList.remove('active'));
+      const activeBtn = document.getElementById('curr' + curr);
+      if (activeBtn) activeBtn.classList.add('active');
+      updatePricingDisplay();
+    }
+
+    function setBilling(isAnnual) {
+      currentIsAnnual = isAnnual;
+      const btnM = document.getElementById('btnMonthly');
+      const btnA = document.getElementById('btnAnnual');
 
       if (isAnnual) {
         btnA.classList.add('active');
         btnM.classList.remove('active');
-        pPro.textContent = '99.00';
-        perPro.textContent = '/ año (~S/ 8.25/mes)';
-        pBus.textContent = '299.00';
-        perBus.textContent = '/ año (~S/ 24.90/mes)';
       } else {
         btnM.classList.add('active');
         btnA.classList.remove('active');
-        pPro.textContent = '9.90';
-        perPro.textContent = '/ mes';
-        pBus.textContent = '29.90';
-        perBus.textContent = '/ mes';
       }
+      updatePricingDisplay();
     }
 
     // 2. Acordeón FAQ

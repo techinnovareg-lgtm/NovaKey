@@ -42,7 +42,7 @@ enum NovaKeyPlan {
   int get maxCredentials {
     switch (this) {
       case NovaKeyPlan.starter:
-        return 30;
+        return 20; // Límite estricto Plan Starter: Hasta 20 contraseñas
       case NovaKeyPlan.pro:
       case NovaKeyPlan.business:
         return 999999;
@@ -52,7 +52,7 @@ enum NovaKeyPlan {
   int get maxPhotos {
     switch (this) {
       case NovaKeyPlan.starter:
-        return 3;
+        return 2; // Límite estricto Plan Starter: Hasta 2 fotos de etiquetas físicas
       case NovaKeyPlan.pro:
       case NovaKeyPlan.business:
         return 999999;
@@ -94,6 +94,75 @@ enum NovaKeyPlan {
 
   String priceText({bool isAnnual = false}) {
     return isAnnual ? priceAnnualText : priceMonthlyText;
+  }
+
+  String formatPrice(NovaKeyCurrency currency, {bool isAnnual = false}) {
+    if (this == NovaKeyPlan.starter) {
+      return currency == NovaKeyCurrency.pen
+          ? 'S/ 0.00'
+          : currency == NovaKeyCurrency.usd
+              ? '\$0.00'
+              : '€0.00';
+    }
+    if (this == NovaKeyPlan.pro) {
+      switch (currency) {
+        case NovaKeyCurrency.pen:
+          return isAnnual ? 'S/ 99.00' : 'S/ 9.90';
+        case NovaKeyCurrency.usd:
+          return isAnnual ? '\$29.00' : '\$3.00';
+        case NovaKeyCurrency.eur:
+          return isAnnual ? '€28.00' : '€3.00';
+      }
+    }
+    switch (currency) {
+      case NovaKeyCurrency.pen:
+        return isAnnual ? 'S/ 299.00' : 'S/ 29.90';
+      case NovaKeyCurrency.usd:
+        return isAnnual ? '\$89.00' : '\$9.00';
+      case NovaKeyCurrency.eur:
+        return isAnnual ? '€85.00' : '€8.00';
+    }
+  }
+
+  String formatPeriod(NovaKeyCurrency currency, {bool isAnnual = false}) {
+    if (this == NovaKeyPlan.starter) return 'de por vida';
+    if (!isAnnual) return 'por mes';
+    switch (currency) {
+      case NovaKeyCurrency.pen:
+        return this == NovaKeyPlan.pro ? 'por año (~S/ 8.25/mes)' : 'por año (~S/ 24.90/mes)';
+      case NovaKeyCurrency.usd:
+        return this == NovaKeyPlan.pro ? 'por año (~\$2.42/mes)' : 'por año (~\$7.42/mes)';
+      case NovaKeyCurrency.eur:
+        return this == NovaKeyPlan.pro ? 'por año (~€2.33/mes)' : 'por año (~€7.08/mes)';
+    }
+  }
+}
+
+enum NovaKeyCurrency {
+  pen,
+  usd,
+  eur;
+
+  String get symbol {
+    switch (this) {
+      case NovaKeyCurrency.pen:
+        return 'S/';
+      case NovaKeyCurrency.usd:
+        return '\$';
+      case NovaKeyCurrency.eur:
+        return '€';
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case NovaKeyCurrency.pen:
+        return 'Soles (S/)';
+      case NovaKeyCurrency.usd:
+        return 'Dólares (\$)';
+      case NovaKeyCurrency.eur:
+        return 'Euros (€)';
+    }
   }
 }
 

@@ -20,6 +20,7 @@ class PlansShowcaseDialog extends StatefulWidget {
 
 class _PlansShowcaseDialogState extends State<PlansShowcaseDialog> {
   bool _isAnnual = false; // Alternar entre Mensual y Anual
+  NovaKeyCurrency _selectedCurrency = NovaKeyCurrency.pen; // PEN, USD, EUR
 
   @override
   Widget build(BuildContext context) {
@@ -62,80 +63,121 @@ class _PlansShowcaseDialogState extends State<PlansShowcaseDialog> {
               ),
               const SizedBox(height: 18),
 
-              // Selector interactivo Mensual vs Anual
-              Center(
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF161B26),
-                    borderRadius: BorderRadius.circular(30),
-                    border: Border.all(color: const Color(0xFF26334D)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      GestureDetector(
-                        onTap: () => setState(() => _isAnnual = false),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: !_isAnnual ? const Color(0xFF1D4ED8) : Colors.transparent,
-                            borderRadius: BorderRadius.circular(24),
+              // Selectores: Moneda y Frecuencia (Mensual vs Anual)
+              Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12,
+                runSpacing: 10,
+                children: [
+                  // Selector de Moneda (PEN, USD, EUR)
+                  Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF161B26),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: const Color(0xFF26334D)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: NovaKeyCurrency.values.map((curr) {
+                        final isSelected = _selectedCurrency == curr;
+                        return GestureDetector(
+                          onTap: () => setState(() => _selectedCurrency = curr),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isSelected ? const Color(0xFF0284C7) : Colors.transparent,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              curr.label,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                                color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+                              ),
+                            ),
                           ),
-                          child: Text(
-                            'Facturación Mensual',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: !_isAnnual ? Colors.white : const Color(0xFF94A3B8),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+
+                  // Selector Mensual vs Anual
+                  Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF161B26),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: const Color(0xFF26334D)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GestureDetector(
+                          onTap: () => setState(() => _isAnnual = false),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: !_isAnnual ? const Color(0xFF1D4ED8) : Colors.transparent,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              'Mensual',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                                color: !_isAnnual ? Colors.white : const Color(0xFF94A3B8),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 4),
-                      GestureDetector(
-                        onTap: () => setState(() => _isAnnual = true),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: _isAnnual ? const Color(0xFF1D4ED8) : Colors.transparent,
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Facturación Anual',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: _isAnnual ? Colors.white : const Color(0xFF94A3B8),
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF10B981).withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: const Color(0xFF10B981)),
-                                ),
-                                child: const Text(
-                                  'AHORRA 17%',
+                        const SizedBox(width: 4),
+                        GestureDetector(
+                          onTap: () => setState(() => _isAnnual = true),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: _isAnnual ? const Color(0xFF1D4ED8) : Colors.transparent,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Anual',
                                   style: TextStyle(
-                                    fontSize: 9,
+                                    fontSize: 11.5,
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFF34D399),
+                                    color: _isAnnual ? Colors.white : const Color(0xFF94A3B8),
                                   ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF10B981).withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: const Color(0xFF10B981)),
+                                  ),
+                                  child: const Text(
+                                    'AHORRA 17%',
+                                    style: TextStyle(
+                                      fontSize: 8.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF34D399),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ),
 
               const SizedBox(height: 24),
@@ -149,15 +191,15 @@ class _PlansShowcaseDialogState extends State<PlansShowcaseDialog> {
                       context: context,
                       title: 'STARTER',
                       subtitle: 'Uso personal básico',
-                      price: 'Gratis',
-                      period: 'de por vida',
+                      price: NovaKeyPlan.starter.formatPrice(_selectedCurrency, isAnnual: _isAnnual),
+                      period: NovaKeyPlan.starter.formatPeriod(_selectedCurrency, isAnnual: _isAnnual),
                       badgeColor: const Color(0xFF64748B),
                       isCurrent: widget.currentUser.plan == NovaKeyPlan.starter,
                       features: const [
-                        'Hasta 30 contraseñas / cuentas',
+                        'Hasta 20 contraseñas / cuentas',
                         'Sincronización Web + Android en tiempo real',
                         'Cifrado Zero-Knowledge AES-256-GCM',
-                        'Hasta 3 fotos de etiquetas físicas',
+                        'Hasta 2 fotos de etiquetas físicas',
                         'Autenticación por PIN al correo',
                         'Exportación en formato JSON',
                       ],
@@ -166,8 +208,8 @@ class _PlansShowcaseDialogState extends State<PlansShowcaseDialog> {
                       context: context,
                       title: 'PRO INDIVIDUAL',
                       subtitle: 'Para usuarios y profesionales',
-                      price: _isAnnual ? 'S/ 99.00' : 'S/ 9.90',
-                      period: _isAnnual ? 'por año (~S/ 8.25/mes)' : 'por mes',
+                      price: NovaKeyPlan.pro.formatPrice(_selectedCurrency, isAnnual: _isAnnual),
+                      period: NovaKeyPlan.pro.formatPeriod(_selectedCurrency, isAnnual: _isAnnual),
                       badgeColor: const Color(0xFF0284C7),
                       isPopular: true,
                       savingsBadge: _isAnnual ? '2 meses gratis' : null,
@@ -186,8 +228,8 @@ class _PlansShowcaseDialogState extends State<PlansShowcaseDialog> {
                       context: context,
                       title: 'BUSINESS / PYME',
                       subtitle: 'Equipos y empresas',
-                      price: _isAnnual ? 'S/ 299.00' : 'S/ 29.90',
-                      period: _isAnnual ? 'por año (~S/ 24.90/mes)' : 'por mes (5 cuentas)',
+                      price: NovaKeyPlan.business.formatPrice(_selectedCurrency, isAnnual: _isAnnual),
+                      period: NovaKeyPlan.business.formatPeriod(_selectedCurrency, isAnnual: _isAnnual),
                       badgeColor: const Color(0xFF8B5CF6),
                       savingsBadge: _isAnnual ? '2 meses gratis' : null,
                       isCurrent: widget.currentUser.plan == NovaKeyPlan.business,

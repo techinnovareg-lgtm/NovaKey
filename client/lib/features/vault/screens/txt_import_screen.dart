@@ -5,6 +5,9 @@ import '../models/vault_category.dart';
 import '../services/vault_sync_service.dart';
 import '../utils/excel_credentials_parser.dart';
 import '../utils/txt_credentials_parser.dart';
+import '../../subscription/services/subscription_service.dart';
+import '../../subscription/widgets/plans_showcase_dialog.dart';
+import '../../subscription/models/user_subscription_profile.dart';
 
 /// Pantalla para cargar e importar archivos .txt y Excel (.xlsx) de cuentas y contraseñas
 class TxtImportScreen extends StatefulWidget {
@@ -167,11 +170,103 @@ class _TxtImportScreenState extends State<TxtImportScreen> {
       return;
     }
 
+    final account = SubscriptionService.getOrCreateAccountForEmail(widget.syncService.userEmail);
+    final currentCount = widget.syncService.currentItems.length;
+    final int maxAllowed = account.plan.maxCredentials;
+
+    if (currentCount >= maxAllowed) {
+      final profile = UserSubscriptionProfile.fromEmail(widget.syncService.userEmail);
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: const Color(0xFF131722),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(color: Color(0xFF1F2937)),
+            ),
+            title: const Row(
+              children: [
+                Icon(Icons.workspace_premium_rounded, color: Color(0xFFF59E0B)),
+                SizedBox(width: 10),
+                Text('Límite del Plan Starter', style: TextStyle(color: Colors.white, fontSize: 16)),
+              ],
+            ),
+            content: Text(
+              'Has alcanzado el límite máximo de $maxAllowed contraseñas de tu Plan Starter (tienes $currentCount guardadas).\n\nActualiza a Plan Pro para importar y guardar cuentas ilimitadas.',
+              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Entendido')),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1D4ED8), foregroundColor: Colors.white),
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  PlansShowcaseDialog.show(context, profile);
+                },
+                child: const Text('Mejorar Plan'),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+
+    // Si excede la capacidad restante, consultar al usuario
+    List<ParsedCredential> toImport = selected;
+    final remainingCapacity = maxAllowed - currentCount;
+    if (selected.length > remainingCapacity) {
+      final profile = UserSubscriptionProfile.fromEmail(widget.syncService.userEmail);
+      final proceedPartial = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF131722),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: Color(0xFF1F2937)),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Color(0xFFF59E0B)),
+              SizedBox(width: 10),
+              Text('Límite de Importación', style: TextStyle(color: Colors.white, fontSize: 16)),
+            ],
+          ),
+          content: Text(
+            'Has seleccionado ${selected.length} cuentas, pero tu Plan Starter solo dispone de $remainingCapacity espacio(s) restante(s) (Límite: $maxAllowed contraseñas).\n\n¿Deseas importar solo las primeras $remainingCapacity cuentas o prefieres actualizar a Plan Pro para importar todas?',
+            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            OutlinedButton(
+              onPressed: () {
+                Navigator.of(ctx).pop(false);
+                PlansShowcaseDialog.show(context, profile);
+              },
+              child: const Text('Ver Planes Pro'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1D4ED8), foregroundColor: Colors.white),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text('Importar solo $remainingCapacity'),
+            ),
+          ],
+        ),
+      );
+
+      if (proceedPartial != true) return;
+      toImport = selected.take(remainingCapacity).toList();
+    }
+
     setState(() => _isProcessing = true);
 
     try {
       int importedCount = 0;
-      for (final item in selected) {
+      for (final item in toImport) {
         final vaultItem = item.toVaultItem().copyWith(
           category: _selectedTargetCategory,
         );

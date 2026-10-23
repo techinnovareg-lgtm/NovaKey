@@ -11,6 +11,8 @@ import '../widgets/change_password_dialog.dart';
 import '../widgets/password_generator_dialog.dart';
 import '../widgets/vault_sidebar.dart';
 import '../../subscription/widgets/user_profile_menu_button.dart';
+import '../../subscription/widgets/plans_showcase_dialog.dart';
+import '../../subscription/models/user_subscription_profile.dart';
 import '../../subscription/services/subscription_service.dart';
 import 'txt_import_screen.dart';
 
@@ -507,6 +509,50 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> {
   }
 
   void _showAddEditItemModal([VaultItem? existingItem]) {
+    final account = SubscriptionService.getOrCreateAccountForEmail(widget.syncService.userEmail);
+    if (existingItem == null && widget.syncService.currentItems.length >= account.plan.maxCredentials) {
+      final profile = UserSubscriptionProfile.fromEmail(widget.syncService.userEmail);
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF131722),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: Color(0xFF1F2937)),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.workspace_premium_rounded, color: Color(0xFFF59E0B)),
+              SizedBox(width: 10),
+              Text('Límite del Plan Starter', style: TextStyle(color: Colors.white, fontSize: 16)),
+            ],
+          ),
+          content: Text(
+            'Has alcanzado el límite de ${account.plan.maxCredentials} contraseñas guardadas de tu Plan Starter.\n\nPara almacenar credenciales ilimitadas, actualiza a Plan Pro o Business.',
+            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Entendido'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1D4ED8),
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                PlansShowcaseDialog.show(context, profile);
+              },
+              child: const Text('Ver Planes'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     final titleController = TextEditingController(text: existingItem?.title ?? '');
     final usernameController = TextEditingController(text: existingItem?.username ?? '');
     final passwordController = TextEditingController(text: existingItem?.password ?? '');
@@ -531,6 +577,49 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (modalContext, setModalState) {
           Future<void> pickPhoto() async {
+            final attachedPhotosCount = widget.syncService.currentItems.where((i) => i.imageBase64.isNotEmpty && i.id != existingItem?.id).length;
+            if (attachedPhotosCount >= account.plan.maxPhotos) {
+              final profile = UserSubscriptionProfile.fromEmail(widget.syncService.userEmail);
+              if (modalContext.mounted) {
+                showDialog(
+                  context: modalContext,
+                  builder: (diagCtx) => AlertDialog(
+                    backgroundColor: const Color(0xFF131722),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: const BorderSide(color: Color(0xFF1F2937)),
+                    ),
+                    title: const Row(
+                      children: [
+                        Icon(Icons.camera_alt_outlined, color: Color(0xFFF59E0B)),
+                        SizedBox(width: 10),
+                        Text('Límite de Fotos de Etiquetas', style: TextStyle(color: Colors.white, fontSize: 16)),
+                      ],
+                    ),
+                    content: Text(
+                      'Tu Plan Starter permite un máximo de ${account.plan.maxPhotos} fotos de etiquetas físicas de hardware.\n\nActualiza al Plan Pro para adjuntar fotos de routers, cámaras y credenciales ilimitadas.',
+                      style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                    ),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.of(diagCtx).pop(), child: const Text('Entendido')),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1D4ED8),
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: () {
+                          Navigator.of(diagCtx).pop();
+                          PlansShowcaseDialog.show(context, profile);
+                        },
+                        child: const Text('Mejorar Plan'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              return;
+            }
+
             try {
               final result = await FilePicker.platform.pickFiles(
                 type: FileType.custom,

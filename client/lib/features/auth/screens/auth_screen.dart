@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/crypto/crypto_engine.dart';
 import '../../../core/security/biometric_service.dart';
 import '../../../core/security/email_pin_service.dart';
@@ -98,17 +99,69 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _handleForgotPassword() async {
-    final email = _emailController.text.trim().toLowerCase();
+    String email = _emailController.text.trim().toLowerCase();
     if (email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingresa tu correo para restablecer la contraseña')),
+      final emailInputCtrl = TextEditingController();
+      final entered = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF131722),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: Color(0xFF1F2937)),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.email_outlined, color: Color(0xFF38BDF8)),
+              SizedBox(width: 10),
+              Text('Recuperar Acceso', style: TextStyle(color: Colors.white, fontSize: 16)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Ingresa el correo electrónico con el que registraste tu bóveda NovaKey:',
+                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: emailInputCtrl,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Correo Electrónico',
+                  prefixIcon: Icon(Icons.email_outlined),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1D4ED8), foregroundColor: Colors.white),
+              onPressed: () {
+                final e = emailInputCtrl.text.trim().toLowerCase();
+                if (e.isNotEmpty && e.contains('@')) {
+                  Navigator.of(ctx).pop(e);
+                }
+              },
+              child: const Text('Continuar'),
+            ),
+          ],
+        ),
       );
-      return;
+      if (entered == null || entered.isEmpty) return;
+      email = entered;
+      _emailController.text = entered;
     }
 
     setState(() {
       _isLoading = true;
-      _statusMessage = 'Enviando código PIN de recuperación a tu correo...';
+      _statusMessage = 'Generando y despachando código PIN a tu correo...';
     });
 
     try {
@@ -119,6 +172,91 @@ class _AuthScreenState extends State<AuthScreen> {
 
       if (!mounted) return;
       setState(() => _isLoading = false);
+
+      // Mostrar el diálogo con el protocolo oficial de comprobación de titularidad por Superadmin
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (dlgCtx) => AlertDialog(
+          backgroundColor: const Color(0xFF0F141C),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: Color(0xFF1F2937)),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.security_rounded, color: Color(0xFF38BDF8)),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text('Protocolo de Seguridad: Olvido de Contraseña', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Bajo el estándar Zero-Knowledge, tus contraseñas están cifradas y ni Tech Innova ni nadie puede conocerlas.',
+                  style: TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8), height: 1.4),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF161F30),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF2563EB).withOpacity(0.4)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '🛡️ Comprobación de Titularidad (Superadmin):',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF38BDF8)),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'El Superadmin tiene la posibilidad de resetear tu clave únicamente si comprueba fehacientemente que eres el dueño de esa cuenta.\n\nPara ello, deberás enviar al número de soporte oficial de Tech Innova (+51 947 515 529):',
+                        style: TextStyle(fontSize: 12, color: Color(0xFFCBD5E1), height: 1.35),
+                      ),
+                      const SizedBox(height: 8),
+                      Text('1. Tu correo registrado: $email', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+                      const Text('2. Tu número de teléfono registrado', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+                      const Text('3. El PIN de seguridad recibido en tu correo', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  '✅ Hemos despachado un PIN de 6 dígitos a tu bandeja de correo (expira en 5 minutos).',
+                  style: TextStyle(fontSize: 11.5, color: Color(0xFF10B981), fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            OutlinedButton.icon(
+              icon: const Icon(Icons.chat_rounded, color: Color(0xFF10B981), size: 16),
+              label: const Text('Contactar Soporte WhatsApp', style: TextStyle(fontSize: 12)),
+              onPressed: () async {
+                final waMsg = 'Hola Tech Innova Soporte, solicito verificar mi titularidad para resetear mi contraseña de NovaKey.\nCorreo: $email\nTeléfono: [mi número]\nPIN recibido: [código de 6 dígitos]';
+                final uri = Uri.parse('https://wa.me/51947515529?text=${Uri.encodeComponent(waMsg)}');
+                try {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                } catch (_) {}
+              },
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1D4ED8), foregroundColor: Colors.white),
+              onPressed: () => Navigator.of(dlgCtx).pop(true),
+              child: const Text('Ingresar PIN y Restablecer'),
+            ),
+          ],
+        ),
+      );
+
+      if (proceed != true || !mounted) return;
 
       final verified = await PinVerificationDialog.show(
         context: context,
@@ -604,16 +742,17 @@ class _AuthScreenState extends State<AuthScreen> {
                         ),
                       ),
                       if (_isLogin) ...[
-                        TextButton(
-                          onPressed: _handleForgotPassword,
-                          child: const Text(
-                            '¿Olvidaste tu contraseña? (PIN al correo)',
+                        TextButton.icon(
+                          icon: const Icon(Icons.help_outline_rounded, size: 16, color: Color(0xFF38BDF8)),
+                          label: const Text(
+                            '¿Olvidaste tu contraseña maestra?',
                             style: TextStyle(
                               color: Color(0xFF38BDF8),
-                              fontSize: 12.5,
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
+                          onPressed: _handleForgotPassword,
                         ),
                       ],
                     ],
