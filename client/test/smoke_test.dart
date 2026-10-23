@@ -16,7 +16,14 @@ void main() {
       const allChars = lower + upper + numbers + symbols;
 
       final random = Random.secure();
-      final password = List.generate(length, (_) => allChars[random.nextInt(allChars.length)]).join();
+      final chars = [
+        lower[random.nextInt(lower.length)],
+        upper[random.nextInt(upper.length)],
+        numbers[random.nextInt(numbers.length)],
+        symbols[random.nextInt(symbols.length)],
+        ...List.generate(length - 4, (_) => allChars[random.nextInt(allChars.length)]),
+      ]..shuffle(random);
+      final password = chars.join();
 
       expect(password.length, equals(20));
       expect(password.contains(RegExp(r'[a-z]')), isTrue);

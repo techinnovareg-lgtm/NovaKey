@@ -65,7 +65,7 @@ class _AuthScreenState extends State<AuthScreen> {
         _emailController.text = '';
       }
       setState(() {
-        _isLogin = (email != null && email.isNotEmpty);
+        _isLogin = true; // Siempre iniciar en modo Iniciar Sesión por defecto
       });
     }
   }
@@ -817,6 +817,31 @@ class _AuthScreenState extends State<AuthScreen> {
             throw Exception('Contraseña maestra incorrecta o cuenta no registrada.');
           }
         }
+      } else {
+        // Modo Registro: Prevenir sobreescritura accidental o reseteo si la cuenta ya existe
+        final localVerifier = await _secureStorage.getPasswordVerifier(email);
+        if (localVerifier != null) {
+          if (mounted) setState(() => _isLogin = true);
+          throw Exception('Ya existe una bóveda registrada con el correo $email en este dispositivo. Por favor inicia sesión.');
+        }
+
+        try {
+          final client = Supabase.instance.client;
+          final signUpRes = await client.auth.signUp(
+            email: email,
+            password: derivedAuthPassword,
+          );
+          if (signUpRes.user?.identities == null || signUpRes.user!.identities!.isEmpty) {
+            if (mounted) setState(() => _isLogin = true);
+            throw Exception('Ya existe una cuenta registrada con el correo $email. Selecciona "Iniciar Sesión" para acceder.');
+          }
+        } on AuthException catch (e) {
+          if (e.message.toLowerCase().contains('already') ||
+              e.message.toLowerCase().contains('exists')) {
+            if (mounted) setState(() => _isLogin = true);
+            throw Exception('Ya existe una cuenta registrada con el correo $email. Selecciona "Iniciar Sesión" para acceder.');
+          }
+        } catch (_) {}
       }
 
       // 4. SOLO SI LA CONTRASEÑA ES 100% CORRECTA: Verificar 2FA para nuevo dispositivo o registro
@@ -963,10 +988,101 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Cifrado de Extremo a Extremo (Zero-Knowledge)',
+                      _isLogin
+                          ? 'Cifrado de Extremo a Extremo (Zero-Knowledge)'
+                          : 'Configura tu bóveda con cifrado Zero-Knowledge',
                       style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
+
+                    // Selector de Modo: Iniciar Sesión vs Nueva Bóveda
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F172A),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFF1E293B)),
+                      ),
+                      padding: const EdgeInsets.all(4),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(8),
+                              onTap: _isLoading
+                                  ? null
+                                  : () {
+                                      if (!_isLogin) setState(() => _isLogin = true);
+                                    },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 9),
+                                decoration: BoxDecoration(
+                                  color: _isLogin ? const Color(0xFF1D4ED8) : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                alignment: Alignment.center,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.lock_outline_rounded,
+                                      size: 16,
+                                      color: _isLogin ? Colors.white : const Color(0xFF94A3B8),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Iniciar Sesión',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: _isLogin ? FontWeight.bold : FontWeight.w500,
+                                        color: _isLogin ? Colors.white : const Color(0xFF94A3B8),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(8),
+                              onTap: _isLoading
+                                  ? null
+                                  : () {
+                                      if (_isLogin) setState(() => _isLogin = false);
+                                    },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 9),
+                                decoration: BoxDecoration(
+                                  color: !_isLogin ? const Color(0xFF1D4ED8) : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                alignment: Alignment.center,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.person_add_alt_1_rounded,
+                                      size: 16,
+                                      color: !_isLogin ? Colors.white : const Color(0xFF94A3B8),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Nueva Bóveda',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: !_isLogin ? FontWeight.bold : FontWeight.w500,
+                                        color: !_isLogin ? Colors.white : const Color(0xFF94A3B8),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
 
                     // Desbloqueo Rápido Biométrico si está disponible
                     if (_canUseBiometrics && _isLogin) ...[
@@ -998,10 +1114,11 @@ class _AuthScreenState extends State<AuthScreen> {
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'Correo Electrónico de Registro',
-                        prefixIcon: Icon(Icons.email_outlined),
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: _isLogin ? 'Correo Electrónico' : 'Correo Electrónico para la Nueva Bóveda',
+                        hintText: 'ejemplo@correo.com',
+                        prefixIcon: const Icon(Icons.email_outlined),
+                        border: const OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -1015,7 +1132,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         }
                       },
                       decoration: InputDecoration(
-                        labelText: 'Contraseña Maestra',
+                        labelText: _isLogin ? 'Contraseña Maestra' : 'Definir Contraseña Maestra',
                         prefixIcon: const Icon(Icons.lock_rounded),
                         border: const OutlineInputBorder(),
                         helperText: !_isLogin
@@ -1048,7 +1165,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
                       const SizedBox(height: 16),
                     ] else ...[
-                      ElevatedButton(
+                      ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
                           minimumSize: const Size.fromHeight(48),
                           backgroundColor: const Color(0xFF1D4ED8),
@@ -1058,24 +1175,14 @@ class _AuthScreenState extends State<AuthScreen> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                        onPressed: _submitAuth,
-                        child: Text(
-                          _isLogin ? 'Desbloquear Bóveda' : 'Inicializar Bóveda Cifrada',
+                        icon: Icon(_isLogin ? Icons.lock_open_rounded : Icons.shield_rounded, size: 18),
+                        label: Text(
+                          _isLogin ? 'Desbloquear Bóveda' : 'Crear Bóveda Segura',
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                         ),
+                        onPressed: _submitAuth,
                       ),
-                      const SizedBox(height: 10),
-                      TextButton(
-                        onPressed: () {
-                          setState(() => _isLogin = !_isLogin);
-                        },
-                        child: Text(
-                          _isLogin
-                              ? '¿No tienes cuenta? Inicializa una bóveda'
-                              : '¿Ya tienes una bóveda? Inicia sesión',
-                          style: const TextStyle(color: Color(0xFF94A3B8)),
-                        ),
-                      ),
+                      const SizedBox(height: 12),
                       if (_isLogin) ...[
                         TextButton.icon(
                           icon: const Icon(Icons.help_outline_rounded, size: 16, color: Color(0xFF38BDF8)),
@@ -1083,11 +1190,32 @@ class _AuthScreenState extends State<AuthScreen> {
                             '¿Olvidaste tu contraseña maestra?',
                             style: TextStyle(
                               color: Color(0xFF38BDF8),
-                              fontSize: 13,
                               fontWeight: FontWeight.w600,
+                              fontSize: 13,
                             ),
                           ),
                           onPressed: _handleForgotPassword,
+                        ),
+                      ] else ...[
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0F172A),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFF1E293B)),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.shield_outlined, size: 16, color: Color(0xFF10B981)),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Se generará un Kit de Rescate de Emergencia oficial descargable.',
+                                  style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ],
