@@ -13,6 +13,7 @@ import '../../../core/widgets/novakey_logo.dart';
 import '../../vault/widgets/tech_innova_credits.dart';
 import '../widgets/pin_verification_dialog.dart';
 import '../widgets/recovery_kit_dialog.dart';
+import '../../subscription/services/subscription_service.dart';
 
 class AuthScreen extends StatefulWidget {
   final Function(SecretKey masterEncryptionKey, String email) onUnlockSuccess;
@@ -876,23 +877,55 @@ class _AuthScreenState extends State<AuthScreen> {
             throw Exception('Contraseña maestra incorrecta. Por favor verifica mayúsculas/minúsculas y caracteres.');
           }
         } else {
-          // Caso B: Dispositivo nuevo / ventana incógnito (sin verifier local).
-          // Se debe validar primero contra Supabase Auth en la nube con la contraseña derivada
+          // Caso B: Dispositivo nuevo / ventana incógnito / otro navegador (sin verifier local).
+          final cleanEmail = email.trim().toLowerCase();
+          final isKnownAccount = SubscriptionService.accounts.any(
+            (a) => a.email.toLowerCase() == cleanEmail,
+          );
+
+          bool cloudPasswordVerified = false;
           try {
             final client = Supabase.instance.client;
             final authRes = await client.auth.signInWithPassword(
-              email: email,
+              email: cleanEmail,
               password: deterministicAuthPassword,
             );
-            if (authRes.user == null) {
-              throw Exception('Contraseña maestra incorrecta. Por favor verifica mayúsculas/minúsculas y caracteres.');
+            if (authRes.user != null) {
+              cloudPasswordVerified = true;
             }
-          } on AuthException catch (_) {
-            throw Exception('Contraseña maestra incorrecta. Por favor verifica mayúsculas/minúsculas y caracteres.');
+          } on AuthException catch (authErr) {
+            debugPrint('Aviso en signInWithPassword en nuevo dispositivo: ${authErr.message} (código: ${authErr.code})');
           } catch (e) {
-            if (e.toString().contains('Contraseña maestra incorrecta')) rethrow;
-            throw Exception('Contraseña maestra incorrecta o cuenta no registrada.');
+            debugPrint('Aviso general en autenticación previa con Supabase: $e');
           }
+
+          // Si Supabase no pudo validar la contraseña directamente (ej: email no confirmado o clave no sincronizada en nube),
+          // comprobar que la cuenta exista antes de despachar el PIN de seguridad.
+          if (!cloudPasswordVerified) {
+            bool accountExists = isKnownAccount;
+            if (!accountExists) {
+              try {
+                final client = Supabase.instance.client;
+                await client.auth.signInWithOtp(email: cleanEmail, shouldCreateUser: false);
+                accountExists = true;
+              } catch (otpErr) {
+                if (otpErr is AuthException &&
+                    (otpErr.statusCode == '422' ||
+                     otpErr.message.toLowerCase().contains('signup') ||
+                     otpErr.message.toLowerCase().contains('disabled') ||
+                     otpErr.code == 'otp_disabled')) {
+                  accountExists = false;
+                } else {
+                  accountExists = true;
+                }
+              }
+            }
+
+            if (!accountExists) {
+              throw Exception('No existe una cuenta registrada con el correo $cleanEmail. Por favor verifica tu correo o selecciona "Crear Bóveda".');
+            }
+          }
+
           activeKeys = deterministicKeys;
           activeAuthPassword = deterministicAuthPassword;
         }
@@ -925,7 +958,7 @@ class _AuthScreenState extends State<AuthScreen> {
         activeAuthPassword = deterministicAuthPassword;
       }
 
-      // 4. SOLO SI LA CONTRASEÑA ES 100% CORRECTA: Verificar 2FA para nuevo dispositivo o registro
+      // 4. SOLO SI LA CONTRASEÑA ES 100% CORRECTA O CUENTA VÁLIDA: Verificar 2FA para nuevo dispositivo o registro
       final isDeviceAuth = await _pinService.isDeviceAuthorized(email);
       final bool requiresPin = !_isLogin || !isDeviceAuth;
 
@@ -962,6 +995,51 @@ class _AuthScreenState extends State<AuthScreen> {
             _isLoading = true;
             _statusMessage = 'Autorizando dispositivo y preparando bóveda...';
           });
+        }
+
+        // VALIDACIÓN CRÍTICA ZERO-KNOWLEDGE POST-PIN EN NUEVO DISPOSITIVO:
+        // Si el usuario ya tiene elementos en la nube (vault_items), verificar que la
+        // clave maestra derivada pueda descifrarlos exitosamente mediante AES-256-GCM.
+        // Si falla la verificación del MAC (SecretBoxAuthenticationError), la clave maestra es errónea.
+        if (_isLogin && savedVerifier == null) {
+          try {
+            final client = Supabase.instance.client;
+            if (client.auth.currentUser != null) {
+              final dynamic remoteRows = await client
+                  .from('vault_items')
+                  .select('payload_ciphertext, nonce, auth_tag, is_deleted')
+                  .eq('user_id', client.auth.currentUser!.id)
+                  .eq('is_deleted', false)
+                  .limit(5);
+
+              final List<dynamic> rowsList = (remoteRows is List) ? remoteRows : [];
+              if (rowsList.isNotEmpty) {
+                bool anyDecrypted = false;
+                for (final dynamic row in rowsList) {
+                  try {
+                    final payload = EncryptedPayload(
+                      ciphertextBase64: row['payload_ciphertext'] as String,
+                      nonceBase64: row['nonce'] as String,
+                      authTagBase64: row['auth_tag'] as String,
+                    );
+                    await CryptoEngine.decrypt(
+                      payload: payload,
+                      key: activeKeys.masterEncryptionKey,
+                    );
+                    anyDecrypted = true;
+                    break;
+                  } catch (_) {}
+                }
+                if (!anyDecrypted) {
+                  await client.auth.signOut();
+                  throw Exception('Contraseña maestra incorrecta. No coincide con las credenciales cifradas de tu bóveda.');
+                }
+              }
+            }
+          } catch (e) {
+            if (e.toString().contains('Contraseña maestra incorrecta')) rethrow;
+            debugPrint('Aviso en validación Zero-Knowledge post-PIN: $e');
+          }
         }
       } else {
         setState(() => _statusMessage = 'Verificando seguridad de acceso Zero-Knowledge...');

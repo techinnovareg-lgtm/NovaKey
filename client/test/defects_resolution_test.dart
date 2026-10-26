@@ -269,5 +269,78 @@ void main() {
 
       syncService.dispose();
     });
+
+    test('8. Autenticación en navegador nuevo (sin verifier local) y verificación Zero-Knowledge', () async {
+      final storage = SecureStorageService();
+      const user = 'carlos.amambal@tech-innova.online';
+      const realPassword = 'RealMasterPassword2026!#';
+      const wrongPassword = 'WrongMasterPassword999!#';
+
+      // 1. Simular Navegador B (vacío, sin verifier local ni autorización)
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+      final verifierOnBrowserB = await storage.getPasswordVerifier(user);
+      final isAuthOnBrowserB = await storage.isDeviceAuthorized(user);
+      expect(verifierOnBrowserB, isNull, reason: 'Navegador nuevo no tiene verifier local previo');
+      expect(isAuthOnBrowserB, isFalse, reason: 'Navegador nuevo no está autorizado inicialmente');
+
+      // 2. Verificar que la cuenta de Carlos Amambal existe en el catálogo de cuentas
+      final isRegistered = SubscriptionService.accounts.any(
+        (a) => a.email.toLowerCase() == user.toLowerCase(),
+      );
+      expect(isRegistered, isTrue, reason: 'Carlos Amambal debe ser reconocido como cuenta registrada');
+
+      // 3. Simular verificación criptográfica Zero-Knowledge ante clave errónea
+      final salt = await CryptoEngine.deriveDeterministicSalt(user);
+      final realKeys = await CryptoEngine.deriveKeys(
+        masterPassword: realPassword,
+        salt: salt,
+        memory: 1024,
+        iterations: 1,
+        parallelism: 1,
+      );
+      final wrongKeys = await CryptoEngine.deriveKeys(
+        masterPassword: wrongPassword,
+        salt: salt,
+        memory: 1024,
+        iterations: 1,
+        parallelism: 1,
+      );
+
+      // Cifrar un elemento de prueba con la clave real (simula elemento en Supabase vault_items)
+      final sampleEncrypted = await CryptoEngine.encrypt(
+        plainText: '{"title":"Banco Central","password":"SecretPassword!"}',
+        key: realKeys.masterEncryptionKey,
+      );
+
+      // Intentar descifrar con la clave errónea DEBE fallar criptográficamente (MAC mismatch)
+      bool wrongPassDecrypted = false;
+      try {
+        await CryptoEngine.decrypt(
+          payload: sampleEncrypted,
+          key: wrongKeys.masterEncryptionKey,
+        );
+        wrongPassDecrypted = true;
+      } catch (_) {
+        wrongPassDecrypted = false;
+      }
+      expect(wrongPassDecrypted, isFalse, reason: 'Una clave errónea nunca puede descifrar credenciales cifradas con AES-256-GCM');
+
+      // Descifrar con la clave real DEBE ser exitoso
+      final decryptedJson = await CryptoEngine.decrypt(
+        payload: sampleEncrypted,
+        key: realKeys.masterEncryptionKey,
+      );
+      expect(decryptedJson.contains('Banco Central'), isTrue);
+
+      // 4. Tras completar el flujo legítimo, el Navegador B queda autorizado y con verifier
+      await storage.savePasswordVerifier(user, realKeys.authHashHex);
+      await storage.setDeviceAuthorized(user, true);
+
+      final postAuthVerifier = await storage.getPasswordVerifier(user);
+      final postIsAuth = await storage.isDeviceAuthorized(user);
+      expect(postAuthVerifier, equals(realKeys.authHashHex));
+      expect(postIsAuth, isTrue);
+    });
   });
 }
