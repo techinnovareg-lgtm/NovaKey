@@ -57,12 +57,13 @@ class VaultSyncService {
         _masterEncryptionKey = masterEncryptionKey,
         _secureStorage = secureStorage ?? SecureStorageService();
 
-  /// Determina si Supabase tiene credenciales reales configuradas
+  /// Determina si Supabase tiene credenciales reales configuradas (excluye mocks de pruebas)
   bool get isCloudConfigured {
     try {
       final url = _supabase.rest.url.toString();
-      return !url.contains('demo-passwords-vault.supabase.co') &&
-          !url.contains('dummy_anon_key');
+      if (url.contains('ysnjstolpjszgjsmtjkc')) return true;
+      if (url.contains('demo') || url.contains('dummy') || url.contains('example')) return false;
+      return true;
     } catch (_) {
       return false;
     }
@@ -112,17 +113,23 @@ class VaultSyncService {
     }
   }
 
-  /// Descarga los registros cifrados desde el almacenamiento local y/o Supabase
+  /// Descarga los registros cifrados DIRECTAMENTE desde la plataforma online Supabase
   Future<List<VaultItem>> fetchAndDecryptAll() async {
     final Map<String, VaultItem> itemMap = {};
 
-    // 1. Cargar y descifrar la bóveda local persistente
-    try {
-      final localVaultJson = await _secureStorage.getLocalEncryptedVault(userEmail);
+    // 1. Asegurar sesión activa en Supabase Auth
+    await _ensureSupabaseSession();
+    final userId = _supabase.auth.currentUser?.id;
 
-      if (localVaultJson != null && localVaultJson.isNotEmpty) {
-        final List<dynamic> localList = jsonDecode(localVaultJson);
-        int decryptFailures = 0;
+    // 2. MIGRACIÓN TRANSPARENTE Y PURGA PERMANENTE DE ALMACENAMIENTO LOCAL:
+    // Si existe algún dato local previo (ej. TXT importado antes de la sincronización en la nube),
+    // se descifra, se respalda de inmediato en la base de datos online de Supabase y se BORRA de local.
+    try {
+      final legacyLocalJson = await _secureStorage.getLocalEncryptedVault(userEmail);
+      if (legacyLocalJson != null && legacyLocalJson.isNotEmpty) {
+        debugPrint('🔄 Migrando y purgando bóveda local legacy hacia Supabase...');
+        final List<dynamic> localList = jsonDecode(legacyLocalJson);
+        final List<VaultItem> legacyItems = [];
         for (final dynamic rawRow in localList) {
           try {
             final Map<dynamic, dynamic> row = rawRow as Map<dynamic, dynamic>;
@@ -133,7 +140,6 @@ class VaultSyncService {
               payload: payload,
               key: _masterEncryptionKey,
             );
-
             final item = VaultItem.fromDecryptedJson(
               id: (row['id'] ?? '').toString(),
               jsonStr: decryptedJson,
@@ -142,27 +148,48 @@ class VaultSyncService {
               isDeleted: row['is_deleted'] == true,
               updatedAt: DateTime.tryParse((row['updated_at'] ?? '').toString()) ?? DateTime.now().toUtc(),
             );
-
             if (!item.isDeleted) {
               itemMap[item.id] = item;
+              legacyItems.add(item);
             }
-          } catch (itemErr) {
-            decryptFailures++;
-            debugPrint('Aviso al descifrar elemento individual: $itemErr');
-            continue;
-          }
+          } catch (_) {}
         }
-        if (decryptFailures > 0 && itemMap.isEmpty) {
-          debugPrint('⚠️ Alerta: Todos los elementos locales fallaron en descifrarse con la clave actual ($decryptFailures fallos).');
+
+        // Subir a Supabase en lote si la nube está conectada
+        if (isCloudConfigured && userId != null && legacyItems.isNotEmpty) {
+          final List<Map<String, dynamic>> upsertRows = [];
+          for (final item in legacyItems) {
+            final enc = await CryptoEngine.encrypt(
+              plainText: item.toSensitiveJson(),
+              key: _masterEncryptionKey,
+            );
+            upsertRows.add({
+              'id': item.id,
+              'user_id': userId,
+              'payload_ciphertext': enc.ciphertextBase64,
+              'nonce': enc.nonceBase64,
+              'auth_tag': enc.authTagBase64,
+              'is_favorite': item.isFavorite,
+              'is_deleted': item.isDeleted,
+              'version': item.version,
+              'client_updated_at': item.updatedAt.toIso8601String(),
+            });
+          }
+          await _supabase.from('vault_items').upsert(upsertRows);
+          debugPrint('☁️ ${upsertRows.length} credenciales migradas exitosamente a Supabase Online.');
+        }
+
+        // PURGA TOTAL: Eliminar definitivamente el almacén local del navegador cuando la nube está activa
+        if (isCloudConfigured) {
+          await _secureStorage.removeLocalEncryptedVault(userEmail);
+          debugPrint('🧹 Almacenamiento local eliminado. Todo reside 100% online en Supabase.');
         }
       }
     } catch (e) {
-      debugPrint('Aviso al leer almacenamiento local: $e');
+      debugPrint('Aviso en purga de almacenamiento local: $e');
     }
 
-    // 2. Asegurar sesión en Supabase y sincronizar con la nube
-    await _ensureSupabaseSession();
-    final userId = _supabase.auth.currentUser?.id;
+    // 3. CARGA DIRECTA Y EXCLUSIVA DESDE SUPABASE ONLINE (Zero-Knowledge)
     if (isCloudConfigured && userId != null) {
       try {
         final dynamic rawResponse = await _supabase
@@ -195,57 +222,25 @@ class VaultSyncService {
               updatedAt: DateTime.tryParse((row['client_updated_at'] ?? row['server_updated_at'] ?? '').toString()) ?? DateTime.now().toUtc(),
             );
 
-            // Supabase prevalece si no existe en local o si es igual/más reciente
-            if (!itemMap.containsKey(item.id) ||
-                item.updatedAt.isAfter(itemMap[item.id]!.updatedAt)) {
-              itemMap[item.id] = item;
-            }
+            itemMap[item.id] = item;
           } catch (itemErr) {
             debugPrint('Aviso al descifrar elemento de la nube: $itemErr');
             continue;
           }
         }
-
-        // 3. SINCRONIZACIÓN ASCENDENTE AUTOMÁTICA (Push local -> nube):
-        // Sincroniza cualquier elemento local previamente guardado (ej. importación TXT previa)
-        // que aún no exista en Supabase, haciéndolo disponible de inmediato en todos los dispositivos.
-        for (final localItem in itemMap.values.toList()) {
-          final existsOnCloud = response.any((r) => r['id'] == localItem.id);
-          if (!existsOnCloud && !localItem.isDeleted) {
-            try {
-              final enc = await CryptoEngine.encrypt(
-                plainText: localItem.toSensitiveJson(),
-                key: _masterEncryptionKey,
-              );
-              await _supabase.from('vault_items').upsert({
-                'id': localItem.id,
-                'user_id': userId,
-                'payload_ciphertext': enc.ciphertextBase64,
-                'nonce': enc.nonceBase64,
-                'auth_tag': enc.authTagBase64,
-                'is_favorite': localItem.isFavorite,
-                'is_deleted': localItem.isDeleted,
-                'version': localItem.version,
-                'client_updated_at': localItem.updatedAt.toIso8601String(),
-              });
-            } catch (syncUpErr) {
-              debugPrint('Aviso al respaldar credencial en la nube: $syncUpErr');
-            }
-          }
-        }
         _updateSyncStatus(CloudSyncStatus.synced);
       } catch (e) {
-        debugPrint('Aviso: modo sin conexión o error de red con Supabase: $e');
-        _updateSyncStatus(CloudSyncStatus.offline);
+        debugPrint('Aviso al consultar Supabase online: $e');
+        _updateSyncStatus(CloudSyncStatus.error);
       }
-    } else {
+    } else if (isCloudConfigured) {
       _updateSyncStatus(CloudSyncStatus.offline);
     }
 
     _cachedItems = itemMap.values.toList()
       ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
 
-    // Persistir siempre la versión actualizada en local para Offline-First
+    // Garantizar que no persista en local si la nube está activa
     await _persistLocalEncryptedVault();
 
     // Sincronizar categorías personalizadas
@@ -273,7 +268,7 @@ class VaultSyncService {
     return _cachedItems;
   }
 
-  /// Cifra un elemento con AES-256-GCM y lo persiste en local y en la nube
+  /// Cifra un elemento con AES-256-GCM y lo persiste DIRECTAMENTE en la plataforma online de Supabase
   Future<void> saveItem(VaultItem item) async {
     // 1. Cifrado simétrico de extremo a extremo (Zero-Knowledge)
     final sensitiveJson = item.toSensitiveJson();
@@ -291,10 +286,7 @@ class VaultSyncService {
     }
     _vaultItemsController.add(_cachedItems);
 
-    // 3. Persistir en almacenamiento seguro local (Offline-First)
-    await _persistLocalEncryptedVault();
-
-    // 4. Si la nube está configurada y el usuario autenticado, enviar a Supabase
+    // 3. Persistir directamente en Supabase Online (100% en la nube)
     await _ensureSupabaseSession();
     final userId = _supabase.auth.currentUser?.id;
     if (isCloudConfigured && userId != null) {
@@ -312,13 +304,17 @@ class VaultSyncService {
         });
         _updateSyncStatus(CloudSyncStatus.synced);
       } catch (e) {
-        debugPrint('Guardado localmente. La sincronización en la nube se reintentará al conectar: $e');
-        _updateSyncStatus(CloudSyncStatus.offline);
+        debugPrint('Error al guardar credencial en la plataforma online Supabase: $e');
+        _updateSyncStatus(CloudSyncStatus.error);
+        rethrow;
       }
     }
+
+    // 4. Asegurar que no quede almacenamiento local en el navegador
+    await _persistLocalEncryptedVault();
   }
 
-  /// Guarda múltiples credenciales de forma eficiente en local y nube (ej. importación masiva TXT/Excel)
+  /// Guarda múltiples credenciales de forma masiva DIRECTAMENTE en Supabase (ej. importación TXT/Excel)
   Future<void> saveItemsBulk(List<VaultItem> items) async {
     if (items.isEmpty) return;
 
@@ -333,10 +329,7 @@ class VaultSyncService {
     }
     _vaultItemsController.add(_cachedItems);
 
-    // 2. Persistir localmente de una sola vez
-    await _persistLocalEncryptedVault();
-
-    // 3. Enviar a Supabase en lote
+    // 2. Persistir directamente en Supabase Online en lote
     await _ensureSupabaseSession();
     final userId = _supabase.auth.currentUser?.id;
     if (isCloudConfigured && userId != null) {
@@ -362,21 +355,24 @@ class VaultSyncService {
         }
         await _supabase.from('vault_items').upsert(upsertRows);
         _updateSyncStatus(CloudSyncStatus.synced);
+        debugPrint('☁️ ${upsertRows.length} credenciales almacenadas exitosamente en Supabase Online.');
       } catch (e) {
-        debugPrint('Guardado en lote en local. Nube pendiente: $e');
-        _updateSyncStatus(CloudSyncStatus.offline);
+        debugPrint('Error al guardar lote en Supabase: $e');
+        _updateSyncStatus(CloudSyncStatus.error);
+        rethrow;
       }
     }
+
+    // 3. Garantizar que no persista ningún archivo local en el navegador
+    await _persistLocalEncryptedVault();
   }
 
-  /// Borrado lógico (soft-delete)
+  /// Borrado lógico (soft-delete) directamente en Supabase Online
   Future<void> deleteItem(String id) async {
     final index = _cachedItems.indexWhere((e) => e.id == id);
     if (index >= 0) {
       _cachedItems.removeAt(index);
       _vaultItemsController.add(_cachedItems);
-
-      await _persistLocalEncryptedVault();
 
       await _ensureSupabaseSession();
       final userId = _supabase.auth.currentUser?.id;
@@ -386,13 +382,24 @@ class VaultSyncService {
             'is_deleted': true,
             'client_updated_at': DateTime.now().toUtc().toIso8601String(),
           }).eq('id', id).eq('user_id', userId);
-        } catch (_) {}
+          _updateSyncStatus(CloudSyncStatus.synced);
+        } catch (e) {
+          debugPrint('Error al eliminar ítem en Supabase Online: $e');
+        }
       }
+
+      await _persistLocalEncryptedVault();
     }
   }
 
-  /// Guarda todos los ítems cifrados en almacenamiento local
+  /// Garantiza que en producción todo resida 100% online en Supabase y NUNCA en local
   Future<void> _persistLocalEncryptedVault() async {
+    if (isCloudConfigured) {
+      // Purgar cualquier dato residual en local: Todo está almacenado 100% online en Supabase
+      await _secureStorage.removeLocalEncryptedVault(userEmail);
+      return;
+    }
+    // Entorno aislado para pruebas unitarias sin conexión
     try {
       final List<Map<String, dynamic>> serializedList = [];
       for (final item in _cachedItems) {
@@ -400,7 +407,6 @@ class VaultSyncService {
           plainText: item.toSensitiveJson(),
           key: _masterEncryptionKey,
         );
-
         serializedList.add({
           'id': item.id,
           'version': item.version,
@@ -410,11 +416,8 @@ class VaultSyncService {
           'encrypted': encrypted.toMap(),
         });
       }
-
       await _secureStorage.saveLocalEncryptedVault(userEmail, jsonEncode(serializedList));
-    } catch (e) {
-      debugPrint('Error al persistir bóveda cifrada en almacenamiento local: $e');
-    }
+    } catch (_) {}
   }
 
   /// Añade una nueva categoría personalizada

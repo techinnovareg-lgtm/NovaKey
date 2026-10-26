@@ -100,6 +100,13 @@ class SecureStorageService {
     return prefs.getString(key);
   }
 
+  /// Elimina definitivamente los ítems cifrados del almacenamiento local
+  Future<void> removeLocalEncryptedVault(String email) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'sec_vault_${email.toLowerCase().trim()}';
+    await prefs.remove(key);
+  }
+
   /// Guarda las categorías personalizadas del usuario
   Future<void> saveCustomCategories(String email, List<String> categories) async {
     final prefs = await SharedPreferences.getInstance();

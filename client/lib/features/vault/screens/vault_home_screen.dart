@@ -1216,10 +1216,10 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> {
                                 const SizedBox(width: 6),
                                 Text(
                                   status == CloudSyncStatus.synced
-                                      ? 'Nube Sincronizada'
+                                      ? 'Bóveda Online (Sincronizada)'
                                       : status == CloudSyncStatus.syncing
                                           ? 'Sincronizando...'
-                                          : 'Modo Local',
+                                          : 'Bóveda Online (Reconectando...)',
                                   style: TextStyle(
                                     fontSize: 11.5,
                                     fontWeight: FontWeight.w600,
