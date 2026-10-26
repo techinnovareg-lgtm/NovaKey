@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/managed_client_account.dart';
 import '../models/user_subscription_profile.dart';
+import '../services/subscription_service.dart';
 
 /// Tablero de Mando Central del Superadmin (Dashboard de Gestión de Clientes, Planes y Suscripciones)
 class SuperAdminDashboardDialog extends StatefulWidget {
@@ -25,87 +26,7 @@ class _SuperAdminDashboardDialogState extends State<SuperAdminDashboardDialog> {
   String _filterPlan = 'Todos';
   String _filterStatus = 'Todos';
 
-  // Base de datos de clientes en memoria gestionados por Tech Innova
-  final List<ManagedClientAccount> _accounts = [
-    ManagedClientAccount(
-      id: 'USR-001',
-      fullName: 'Carlos Amambal',
-      email: 'carlos.amambal@tech-innova.online',
-      phone: '+51 987 654 321',
-      role: 'Superadmin',
-      plan: NovaKeyPlan.business,
-      billingCycle: 'Vitalicio',
-      status: 'Activo',
-      startDate: DateTime(2026, 1, 1),
-      expirationDate: DateTime(2099, 12, 31),
-      deviceCount: 4,
-    ),
-    ManagedClientAccount(
-      id: 'USR-002',
-      fullName: 'Soporte Tech Innova',
-      email: 'tech.innova.reg@gmail.com',
-      phone: '+51 980 123 456',
-      role: 'Superadmin',
-      plan: NovaKeyPlan.business,
-      billingCycle: 'Vitalicio',
-      status: 'Activo',
-      startDate: DateTime(2026, 1, 15),
-      expirationDate: DateTime(2099, 12, 31),
-      deviceCount: 3,
-    ),
-    ManagedClientAccount(
-      id: 'USR-003',
-      fullName: 'Valerio Morales',
-      email: 'valecknife@gmail.com',
-      phone: '+51 945 112 233',
-      role: 'Cliente',
-      plan: NovaKeyPlan.pro,
-      billingCycle: 'Anual',
-      status: 'Activo',
-      startDate: DateTime(2026, 10, 1),
-      expirationDate: DateTime(2027, 10, 1),
-      deviceCount: 2,
-    ),
-    ManagedClientAccount(
-      id: 'USR-004',
-      fullName: 'Estudio Jurídico Lima',
-      email: 'contacto@estudiojuridico.pe',
-      phone: '+51 999 888 777',
-      role: 'Cliente',
-      plan: NovaKeyPlan.business,
-      billingCycle: 'Mensual',
-      status: 'Por Vencer',
-      startDate: DateTime(2026, 9, 25),
-      expirationDate: DateTime(2026, 10, 25),
-      deviceCount: 5,
-    ),
-    ManagedClientAccount(
-      id: 'USR-005',
-      fullName: 'Ana María Quispe',
-      email: 'ana.quispe@gmail.com',
-      phone: '+51 912 345 678',
-      role: 'Cliente',
-      plan: NovaKeyPlan.pro,
-      billingCycle: 'Mensual',
-      status: 'Vencido',
-      startDate: DateTime(2026, 8, 10),
-      expirationDate: DateTime(2026, 9, 10),
-      deviceCount: 1,
-    ),
-    ManagedClientAccount(
-      id: 'USR-006',
-      fullName: 'Roberto Mendoza',
-      email: 'roberto.m@empresa.com',
-      phone: '+51 933 221 100',
-      role: 'Cliente',
-      plan: NovaKeyPlan.starter,
-      billingCycle: 'Vitalicio',
-      status: 'Activo',
-      startDate: DateTime(2026, 10, 5),
-      expirationDate: DateTime(2099, 12, 31),
-      deviceCount: 2,
-    ),
-  ];
+  List<ManagedClientAccount> get _accounts => SubscriptionService.accounts;
 
   @override
   void initState() {

@@ -8,13 +8,13 @@ class SubscriptionService {
   static const String _keyAccountsJson = 'novakey_managed_accounts';
   static const String _keyNotifiedPlanPrefix = 'novakey_notified_plan_';
 
-  // Base de datos de clientes compartida en memoria y persistida localmente
+  // Catálogo base de cuentas administrativas autorizadas
   static final List<ManagedClientAccount> _accounts = [
     ManagedClientAccount(
       id: 'USR-001',
-      fullName: 'Carlos Amambal',
+      fullName: 'Superadmin NovaKey',
       email: 'carlos.amambal@tech-innova.online',
-      phone: '+51 987 654 321',
+      phone: 'Privado',
       role: 'Superadmin',
       plan: NovaKeyPlan.business,
       billingCycle: 'Vitalicio',
@@ -25,9 +25,9 @@ class SubscriptionService {
     ),
     ManagedClientAccount(
       id: 'USR-002',
-      fullName: 'Soporte Tech Innova',
+      fullName: 'Soporte NovaKey',
       email: 'tech.innova.reg@gmail.com',
-      phone: '+51 980 123 456',
+      phone: 'Privado',
       role: 'Superadmin',
       plan: NovaKeyPlan.business,
       billingCycle: 'Vitalicio',
@@ -35,46 +35,6 @@ class SubscriptionService {
       startDate: DateTime(2026, 1, 15),
       expirationDate: DateTime(2099, 12, 31),
       deviceCount: 3,
-    ),
-    ManagedClientAccount(
-      id: 'USR-003',
-      fullName: 'Valerio Morales',
-      email: 'valecknife@gmail.com',
-      phone: '+51 945 112 233',
-      role: 'Cliente',
-      plan: NovaKeyPlan.pro,
-      billingCycle: 'Anual',
-      status: 'Activo',
-      startDate: DateTime(2026, 10, 1),
-      expirationDate: DateTime(2027, 10, 1),
-      deviceCount: 2,
-    ),
-    ManagedClientAccount(
-      id: 'USR-004',
-      fullName: 'Estudio Jurídico Lima',
-      email: 'contacto@estudiojuridico.pe',
-      phone: '+51 999 888 777',
-      role: 'Cliente',
-      plan: NovaKeyPlan.business,
-      billingCycle: 'Mensual',
-      status: 'Por Vencer',
-      startDate: DateTime(2026, 9, 25),
-      expirationDate: DateTime(2026, 10, 25),
-      deviceCount: 5,
-    ),
-    ManagedClientAccount(
-      id: 'USR-005',
-      fullName: 'Consultora Andes SAC',
-      email: 'admin@consultoraandes.com',
-      phone: '+51 912 345 678',
-      role: 'Cliente',
-      plan: NovaKeyPlan.pro,
-      billingCycle: 'Mensual',
-      status: 'Vencido',
-      startDate: DateTime(2026, 8, 1),
-      expirationDate: DateTime(2026, 9, 1),
-      deviceCount: 2,
-      isArchived: false,
     ),
   ];
 
