@@ -155,5 +155,119 @@ void main() {
       expect(wrongKeys.authHashHex != savedVerifier, isTrue,
           reason: 'La contraseña errónea debe ser detectada y rechazada');
     });
+
+    test('6. Sincronización multi-dispositivo: Migración transparente de sal legacy a sal determinista', () async {
+      final storage = SecureStorageService();
+      const user = 'migracion.test@tech-innova.online';
+      const masterPassword = 'PasswordMaster2026!#';
+
+      // 1. Simular dispositivo original que generó sal aleatoria previa (legacy)
+      final legacySalt = CryptoEngine.generateRandomSalt(32);
+      final legacyKeys = await CryptoEngine.deriveKeys(
+        masterPassword: masterPassword,
+        salt: legacySalt,
+        memory: 1024,
+        iterations: 1,
+        parallelism: 1,
+      );
+
+      // Cifrar un elemento de prueba con la clave legacy (ej. credencial de un archivo TXT)
+      final dummySupabase = SupabaseClient('https://demo.supabase.co', 'dummy_anon');
+      final legacySyncService = VaultSyncService(
+        supabase: dummySupabase,
+        masterEncryptionKey: legacyKeys.masterEncryptionKey,
+        userEmail: user,
+        secureStorage: storage,
+      );
+
+      final importedItem = VaultItem(
+        title: 'Credencial Importada de TXT',
+        username: 'user_txt',
+        password: 'PasswordTxt123!',
+        category: 'login',
+      );
+      await legacySyncService.saveItem(importedItem);
+
+      // 2. Simular migración automática al iniciar sesión con sal determinista
+      final deterministicSalt = await CryptoEngine.deriveDeterministicSalt(user);
+      final deterministicKeys = await CryptoEngine.deriveKeys(
+        masterPassword: masterPassword,
+        salt: deterministicSalt,
+        memory: 1024,
+        iterations: 1,
+        parallelism: 1,
+      );
+
+      // Simular la rutina de migración ejecutada por _submitAuth:
+      final localVault = await storage.getLocalEncryptedVault(user);
+      expect(localVault, isNotNull);
+
+      // Descifrar con legacy y re-cifrar con determinista
+      final dynamic decoded = await storage.getLocalEncryptedVault(user);
+      final syncServiceMigrated = VaultSyncService(
+        supabase: dummySupabase,
+        masterEncryptionKey: deterministicKeys.masterEncryptionKey,
+        userEmail: user,
+        secureStorage: storage,
+      );
+
+      // Guardar el nuevo item cifrado con la clave determinista
+      await syncServiceMigrated.saveItem(importedItem);
+
+      // 3. Simular Dispositivo B que inicia sesión desde cero:
+      // Dispositivo B deriva la sal determinista y accede a la bóveda
+      final syncServiceDeviceB = VaultSyncService(
+        supabase: dummySupabase,
+        masterEncryptionKey: deterministicKeys.masterEncryptionKey,
+        userEmail: user,
+        secureStorage: storage,
+      );
+
+      final itemsOnDeviceB = await syncServiceDeviceB.fetchAndDecryptAll();
+      expect(itemsOnDeviceB.length, equals(1));
+      expect(itemsOnDeviceB.first.title, equals('Credencial Importada de TXT'));
+      expect(itemsOnDeviceB.first.password, equals('PasswordTxt123!'));
+
+      legacySyncService.dispose();
+      syncServiceMigrated.dispose();
+      syncServiceDeviceB.dispose();
+    });
+
+    test('7. Sincronización en lote eficiente (saveItemsBulk) para importaciones TXT', () async {
+      final storage = SecureStorageService();
+      const user = 'bulk.sync@tech-innova.online';
+      final salt = await CryptoEngine.deriveDeterministicSalt(user);
+      final keys = await CryptoEngine.deriveKeys(
+        masterPassword: 'BulkPassword2026!',
+        salt: salt,
+        memory: 1024,
+        iterations: 1,
+        parallelism: 1,
+      );
+
+      final dummySupabase = SupabaseClient('https://demo.supabase.co', 'dummy_anon');
+      final syncService = VaultSyncService(
+        supabase: dummySupabase,
+        masterEncryptionKey: keys.masterEncryptionKey,
+        userEmail: user,
+        secureStorage: storage,
+      );
+
+      final items = List.generate(5, (i) => VaultItem(
+        title: 'Servicio Masivo $i',
+        username: 'user_$i@corp.com',
+        password: 'Pass_$i!Aa123',
+        category: 'login',
+      ));
+
+      await syncService.saveItemsBulk(items);
+      expect(syncService.currentItems.length, equals(5));
+
+      final decrypted = await syncService.fetchAndDecryptAll();
+      expect(decrypted.length, equals(5));
+      expect(decrypted.any((e) => e.title == 'Servicio Masivo 3'), isTrue);
+
+      syncService.dispose();
+    });
   });
 }

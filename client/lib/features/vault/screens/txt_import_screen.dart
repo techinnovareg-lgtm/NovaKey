@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../models/vault_category.dart';
+import '../models/vault_item.dart';
 import '../services/vault_sync_service.dart';
 import '../utils/excel_credentials_parser.dart';
 import '../utils/txt_credentials_parser.dart';
@@ -265,14 +266,14 @@ class _TxtImportScreenState extends State<TxtImportScreen> {
     setState(() => _isProcessing = true);
 
     try {
-      int importedCount = 0;
-      for (final item in toImport) {
-        final vaultItem = item.toVaultItem().copyWith(
+      final List<VaultItem> itemsToSave = toImport.map((item) {
+        return item.toVaultItem().copyWith(
           category: _selectedTargetCategory,
         );
-        await widget.syncService.saveItem(vaultItem);
-        importedCount++;
-      }
+      }).toList();
+
+      await widget.syncService.saveItemsBulk(itemsToSave);
+      final importedCount = itemsToSave.length;
 
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();

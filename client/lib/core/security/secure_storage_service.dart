@@ -126,6 +126,20 @@ class SecureStorageService {
     return prefs.getBool(key) ?? false;
   }
 
+  /// Guarda la contraseña de autenticación derivada para re-autenticación de sesión en segundo plano
+  Future<void> saveSavedAuthPassword(String email, String authPassword) async {
+    final prefs = await SharedPreferences.getInstance();
+    final cleanEmail = email.toLowerCase().trim();
+    await prefs.setString('sec_auth_pwd_$cleanEmail', authPassword);
+  }
+
+  /// Recupera la contraseña de autenticación derivada para re-autenticar sesión con Supabase
+  Future<String?> getSavedAuthPassword(String email) async {
+    final prefs = await SharedPreferences.getInstance();
+    final cleanEmail = email.toLowerCase().trim();
+    return prefs.getString('sec_auth_pwd_$cleanEmail');
+  }
+
   /// Borra las claves locales temporales
   Future<void> clearAll() async {
     await _storage.deleteAll();

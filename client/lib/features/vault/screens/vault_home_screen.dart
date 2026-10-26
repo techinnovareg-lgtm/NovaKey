@@ -1054,7 +1054,41 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> {
             );
           },
           onExport: _exportVaultBackup,
-          onSync: () => widget.syncService.fetchAndDecryptAll(),
+          onSync: () async {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Row(
+                  children: [
+                    SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF38BDF8)),
+                    ),
+                    SizedBox(width: 12),
+                    Text('Sincronizando con la nube de NovaKey...'),
+                  ],
+                ),
+                duration: Duration(seconds: 2),
+              ),
+            );
+            final items = await widget.syncService.fetchAndDecryptAll();
+            if (mounted) {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      const Icon(Icons.cloud_done_rounded, color: Colors.greenAccent),
+                      const SizedBox(width: 12),
+                      Text('Bóveda sincronizada: ${items.length} credenciales disponibles en todos tus dispositivos.'),
+                    ],
+                  ),
+                  backgroundColor: const Color(0xFF0F172A),
+                ),
+              );
+            }
+          },
           onOpenPasswordGenerator: () => showDialog(
             context: context,
             builder: (_) => const PasswordGeneratorDialog(),
@@ -1111,6 +1145,95 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> {
                     ),
                   ),
                   const Spacer(),
+                  // Indicador interactivo de Sincronización en la Nube
+                  StreamBuilder<CloudSyncStatus>(
+                    stream: widget.syncService.syncStatusStream,
+                    initialData: widget.syncService.currentSyncStatus,
+                    builder: (context, syncSnap) {
+                      final status = syncSnap.data ?? CloudSyncStatus.offline;
+                      IconData icon;
+                      Color iconColor;
+
+                      switch (status) {
+                        case CloudSyncStatus.synced:
+                          icon = Icons.cloud_done_rounded;
+                          iconColor = const Color(0xFF10B981);
+                          break;
+                        case CloudSyncStatus.syncing:
+                          icon = Icons.sync_rounded;
+                          iconColor = const Color(0xFF38BDF8);
+                          break;
+                        case CloudSyncStatus.offline:
+                        case CloudSyncStatus.error:
+                          icon = Icons.cloud_queue_rounded;
+                          iconColor = const Color(0xFF94A3B8);
+                          break;
+                      }
+
+                      return InkWell(
+                        onTap: () async {
+                          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Row(
+                                children: [
+                                  SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF38BDF8)),
+                                  ),
+                                  SizedBox(width: 12),
+                                  Text('Sincronizando con la nube de NovaKey...'),
+                                ],
+                              ),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                          final items = await widget.syncService.fetchAndDecryptAll();
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('✅ Sincronización completa: ${items.length} credenciales listas.'),
+                                backgroundColor: const Color(0xFF0F172A),
+                              ),
+                            );
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF161F30),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: iconColor.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(icon, size: 16, color: iconColor),
+                              if (isWide) ...[
+                                const SizedBox(width: 6),
+                                Text(
+                                  status == CloudSyncStatus.synced
+                                      ? 'Nube Sincronizada'
+                                      : status == CloudSyncStatus.syncing
+                                          ? 'Sincronizando...'
+                                          : 'Modo Local',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: iconColor,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 12),
                   // Campo de búsqueda integrado
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 320),

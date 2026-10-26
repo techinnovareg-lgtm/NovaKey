@@ -88,6 +88,24 @@ class _AuthScreenState extends State<AuthScreen> {
       final email = await _secureStorage.getUserEmail() ?? '';
       final keyBytes = base64Decode(savedMekBase64);
       final secretKey = SecretKey(keyBytes);
+
+      // Asegurar que la sesión de Supabase Auth esté activa para sincronización en la nube
+      try {
+        final client = Supabase.instance.client;
+        if (client.auth.currentUser == null && email.isNotEmpty) {
+          final savedAuthPassword = await _secureStorage.getSavedAuthPassword(email);
+          if (savedAuthPassword != null && savedAuthPassword.isNotEmpty) {
+            await client.auth.signInWithPassword(
+              email: email,
+              password: savedAuthPassword,
+            );
+            debugPrint('✅ Sesión de Supabase reconectada en biometría para: $email');
+          }
+        }
+      } catch (authErr) {
+        debugPrint('Aviso al reconectar sesión en biometría: $authErr');
+      }
+
       widget.onUnlockSuccess(secretKey, email);
     } catch (e) {
       if (mounted) {
@@ -770,32 +788,91 @@ class _AuthScreenState extends State<AuthScreen> {
     });
 
     try {
-      // 1. Obtener sal persistida o derivar sal determinista por cuenta para sincronización multi-dispositivo
-      String? saltBase64 = await _secureStorage.getUserSalt(email);
-      Uint8List salt;
-
-      if (saltBase64 == null) {
-        salt = await CryptoEngine.deriveDeterministicSalt(email);
-        saltBase64 = base64Encode(salt);
-        await _secureStorage.saveUserSalt(email, saltBase64);
-      } else {
-        salt = base64Decode(saltBase64);
-      }
-
-      // 2. Derivar la clave criptográfica mediante Argon2id + HKDF
-      final derivedKeys = await CryptoEngine.deriveKeys(
+      // 1. Derivar la sal determinista garantizada para sincronización multi-dispositivo
+      final deterministicSalt = await CryptoEngine.deriveDeterministicSalt(email);
+      final deterministicSaltBase64 = base64Encode(deterministicSalt);
+      final deterministicKeys = await CryptoEngine.deriveKeys(
         masterPassword: password,
-        salt: salt,
+        salt: deterministicSalt,
       );
+      final deterministicAuthPassword = 'NK_' + deterministicKeys.authHashHex.substring(0, 32) + '!Aa1';
 
-      final derivedAuthPassword = 'NK_' + derivedKeys.authHashHex.substring(0, 32) + '!Aa1';
+      // 2. Verificar sal y verifier locales existentes
+      final savedSaltBase64 = await _secureStorage.getUserSalt(email);
+      final savedVerifier = await _secureStorage.getPasswordVerifier(email);
+
+      DerivedKeys activeKeys = deterministicKeys;
+      String activeAuthPassword = deterministicAuthPassword;
 
       // 3. PASO CRÍTICO DE SEGURIDAD: VERIFICAR CONTRASEÑA ANTES DE ENVIAR PIN O CONCEDER ACCESO
       if (_isLogin) {
-        final savedVerifier = await _secureStorage.getPasswordVerifier(email);
         if (savedVerifier != null) {
-          // Caso A: Dispositivo conocido con verifier guardado localmente
-          if (derivedKeys.authHashHex != savedVerifier) {
+          // Caso A: Dispositivo conocido con verifier previo
+          if (savedVerifier == deterministicKeys.authHashHex) {
+            // Ya alineado con la sal determinista
+            activeKeys = deterministicKeys;
+            activeAuthPassword = deterministicAuthPassword;
+          } else if (savedSaltBase64 != null && savedSaltBase64 != deterministicSaltBase64) {
+            // Posible dispositivo con sal legacy previa generada aleatoriamente
+            final legacySalt = base64Decode(savedSaltBase64);
+            final legacyKeys = await CryptoEngine.deriveKeys(
+              masterPassword: password,
+              salt: legacySalt,
+            );
+            if (legacyKeys.authHashHex == savedVerifier) {
+              // La contraseña ingresada es correcta bajo la sal legacy.
+              // Migración transparente a sal determinista para habilitar sincronización total con otros dispositivos:
+              debugPrint('🔄 Migrando bóveda local de sal legacy a sal determinista multi-dispositivo...');
+              final legacyLocalVault = await _secureStorage.getLocalEncryptedVault(email);
+              if (legacyLocalVault != null && legacyLocalVault.isNotEmpty) {
+                try {
+                  final List<dynamic> localList = jsonDecode(legacyLocalVault);
+                  final List<Map<String, dynamic>> migratedList = [];
+                  for (final dynamic rawRow in localList) {
+                    try {
+                      final Map<dynamic, dynamic> row = rawRow as Map<dynamic, dynamic>;
+                      final dynamic rawEnc = row['encrypted'];
+                      if (rawEnc == null) continue;
+                      final payload = EncryptedPayload.fromMap(rawEnc as Map<dynamic, dynamic>);
+                      final decryptedJson = await CryptoEngine.decrypt(
+                        payload: payload,
+                        key: legacyKeys.masterEncryptionKey,
+                      );
+                      // Re-encriptar con la nueva clave determinista
+                      final newEncrypted = await CryptoEngine.encrypt(
+                        plainText: decryptedJson,
+                        key: deterministicKeys.masterEncryptionKey,
+                      );
+                      migratedList.add({
+                        'id': row['id'],
+                        'version': row['version'] ?? 1,
+                        'is_favorite': row['is_favorite'] == true,
+                        'is_deleted': row['is_deleted'] == true,
+                        'updated_at': row['updated_at'] ?? DateTime.now().toUtc().toIso8601String(),
+                        'encrypted': newEncrypted.toMap(),
+                      });
+                    } catch (_) {}
+                  }
+                  if (migratedList.isNotEmpty) {
+                    await _secureStorage.saveLocalEncryptedVault(email, jsonEncode(migratedList));
+                  }
+                } catch (migErr) {
+                  debugPrint('Aviso en migración de bóveda local: $migErr');
+                }
+              }
+
+              // Actualizar sal, verifier y MEK para biometría a la versión determinista
+              await _secureStorage.saveUserSalt(email, deterministicSaltBase64);
+              await _secureStorage.savePasswordVerifier(email, deterministicKeys.authHashHex);
+              final newMekBytes = await deterministicKeys.masterEncryptionKey.extractBytes();
+              await _secureStorage.saveEncryptedMek(base64Encode(newMekBytes));
+
+              activeKeys = deterministicKeys;
+              activeAuthPassword = deterministicAuthPassword;
+            } else {
+              throw Exception('Contraseña maestra incorrecta. Por favor verifica mayúsculas/minúsculas y caracteres.');
+            }
+          } else {
             throw Exception('Contraseña maestra incorrecta. Por favor verifica mayúsculas/minúsculas y caracteres.');
           }
         } else {
@@ -805,7 +882,7 @@ class _AuthScreenState extends State<AuthScreen> {
             final client = Supabase.instance.client;
             final authRes = await client.auth.signInWithPassword(
               email: email,
-              password: derivedAuthPassword,
+              password: deterministicAuthPassword,
             );
             if (authRes.user == null) {
               throw Exception('Contraseña maestra incorrecta. Por favor verifica mayúsculas/minúsculas y caracteres.');
@@ -816,6 +893,8 @@ class _AuthScreenState extends State<AuthScreen> {
             if (e.toString().contains('Contraseña maestra incorrecta')) rethrow;
             throw Exception('Contraseña maestra incorrecta o cuenta no registrada.');
           }
+          activeKeys = deterministicKeys;
+          activeAuthPassword = deterministicAuthPassword;
         }
       } else {
         // Modo Registro: Prevenir sobreescritura accidental o reseteo si la cuenta ya existe
@@ -829,7 +908,7 @@ class _AuthScreenState extends State<AuthScreen> {
           final client = Supabase.instance.client;
           final signUpRes = await client.auth.signUp(
             email: email,
-            password: derivedAuthPassword,
+            password: deterministicAuthPassword,
           );
           if (signUpRes.user?.identities == null || signUpRes.user!.identities!.isEmpty) {
             if (mounted) setState(() => _isLogin = true);
@@ -842,6 +921,8 @@ class _AuthScreenState extends State<AuthScreen> {
             throw Exception('Ya existe una cuenta registrada con el correo $email. Selecciona "Iniciar Sesión" para acceder.');
           }
         } catch (_) {}
+        activeKeys = deterministicKeys;
+        activeAuthPassword = deterministicAuthPassword;
       }
 
       // 4. SOLO SI LA CONTRASEÑA ES 100% CORRECTA: Verificar 2FA para nuevo dispositivo o registro
@@ -890,20 +971,37 @@ class _AuthScreenState extends State<AuthScreen> {
       try {
         final client = Supabase.instance.client;
         if (client.auth.currentUser != null) {
-          await client.auth.updateUser(UserAttributes(password: derivedAuthPassword));
+          await client.auth.updateUser(UserAttributes(password: activeAuthPassword));
         } else {
-          await client.auth.signInWithPassword(
-            email: email,
-            password: derivedAuthPassword,
-          );
+          try {
+            await client.auth.signInWithPassword(
+              email: email,
+              password: activeAuthPassword,
+            );
+          } on AuthException catch (authErr) {
+            if (authErr.message.toLowerCase().contains('invalid') || authErr.code == 'invalid_credentials') {
+              try {
+                await client.auth.signUp(
+                  email: email,
+                  password: activeAuthPassword,
+                );
+              } catch (_) {}
+            }
+          }
         }
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('Aviso al sincronizar sesión de Supabase: $e');
+      }
+
+      // Guardar la contraseña derivada para biometría y reconexiones en segundo plano
+      await _secureStorage.saveSavedAuthPassword(email, activeAuthPassword);
 
       // 6. Autorizar dispositivo y guardar credenciales
       await _pinService.authorizeCurrentDevice(email);
-      await _secureStorage.savePasswordVerifier(email, derivedKeys.authHashHex);
+      await _secureStorage.savePasswordVerifier(email, activeKeys.authHashHex);
       await _secureStorage.saveUserEmail(email);
-      final rawKeyBytes = await derivedKeys.masterEncryptionKey.extractBytes();
+      await _secureStorage.saveUserSalt(email, deterministicSaltBase64);
+      final rawKeyBytes = await activeKeys.masterEncryptionKey.extractBytes();
       await _secureStorage.saveEncryptedMek(base64Encode(rawKeyBytes));
       await _secureStorage.setBiometricsEnabled(true);
 
@@ -911,9 +1009,9 @@ class _AuthScreenState extends State<AuthScreen> {
       if (!_isLogin) {
         final recoveryKey = RecoveryKitService.generateRecoveryKey();
         final recoveryPayload = await RecoveryKitService.encryptMekForRecovery(
-          masterEncryptionKey: derivedKeys.masterEncryptionKey,
+          masterEncryptionKey: activeKeys.masterEncryptionKey,
           recoveryKey: recoveryKey,
-          salt: salt,
+          salt: deterministicSalt,
         );
         await RecoveryKitService.saveRecoveryData(
           email: email,
@@ -931,7 +1029,7 @@ class _AuthScreenState extends State<AuthScreen> {
       }
 
       // 7. Acceder a la Bóveda en memoria
-      widget.onUnlockSuccess(derivedKeys.masterEncryptionKey, email);
+      widget.onUnlockSuccess(activeKeys.masterEncryptionKey, email);
     } catch (e) {
       if (mounted) {
         final errText = e.toString().replaceAll('Exception:', '').trim();

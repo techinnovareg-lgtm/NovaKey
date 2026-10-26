@@ -7,6 +7,14 @@ import '../../../core/crypto/crypto_engine.dart';
 import '../../../core/security/secure_storage_service.dart';
 import '../models/vault_item.dart';
 
+/// Estados de la sincronización en la nube con Supabase
+enum CloudSyncStatus {
+  synced,
+  syncing,
+  offline,
+  error,
+}
+
 /// Servicio de Sincronización Local y en la Nube con arquitectura Zero-Knowledge y Offline-First
 class VaultSyncService {
   final SupabaseClient _supabase;
@@ -20,6 +28,18 @@ class VaultSyncService {
 
   final _categoriesController = StreamController<List<String>>.broadcast();
   Stream<List<String>> get categoriesStream => _categoriesController.stream;
+
+  final _syncStatusController = StreamController<CloudSyncStatus>.broadcast();
+  Stream<CloudSyncStatus> get syncStatusStream => _syncStatusController.stream;
+  CloudSyncStatus _currentSyncStatus = CloudSyncStatus.offline;
+  CloudSyncStatus get currentSyncStatus => _currentSyncStatus;
+
+  void _updateSyncStatus(CloudSyncStatus status) {
+    _currentSyncStatus = status;
+    if (!_syncStatusController.isClosed) {
+      _syncStatusController.add(status);
+    }
+  }
 
   List<String> _customCategories = [];
   List<String> get customCategories => List.unmodifiable(_customCategories);
@@ -48,10 +68,29 @@ class VaultSyncService {
     }
   }
 
+  /// Asegura que la sesión de Supabase Auth esté activa utilizando la contraseña derivada
+  Future<void> _ensureSupabaseSession() async {
+    if (!isCloudConfigured) return;
+    if (_supabase.auth.currentUser != null) return;
+
+    try {
+      final savedAuthPassword = await _secureStorage.getSavedAuthPassword(userEmail);
+      if (savedAuthPassword != null && savedAuthPassword.isNotEmpty) {
+        await _supabase.auth.signInWithPassword(
+          email: userEmail.trim().toLowerCase(),
+          password: savedAuthPassword,
+        );
+        debugPrint('✅ Sesión de Supabase Auth reconectada exitosamente para: $userEmail');
+      }
+    } catch (e) {
+      debugPrint('Aviso al reconectar sesión en segundo plano con Supabase: $e');
+    }
+  }
+
   /// Inicializa la escucha de cambios en tiempo real vía WebSockets de Supabase
   void initializeRealtimeSync() {
-    if (!isCloudConfigured || _supabase.auth.currentUser == null) {
-      debugPrint('ℹ️ Modo Local / Offline activo: Sincronización en la nube en espera de credenciales Supabase.');
+    if (!isCloudConfigured) {
+      _updateSyncStatus(CloudSyncStatus.offline);
       return;
     }
 
@@ -63,6 +102,7 @@ class VaultSyncService {
             schema: 'public',
             table: 'vault_items',
             callback: (payload) {
+              debugPrint('⚡ Cambio en tiempo real detectado en Supabase, sincronizando bóveda...');
               fetchAndDecryptAll();
             },
           )
@@ -120,7 +160,8 @@ class VaultSyncService {
       debugPrint('Aviso al leer almacenamiento local: $e');
     }
 
-    // 2. Si hay conexión configurada y usuario autenticado en Supabase, sincronizar con la nube
+    // 2. Asegurar sesión en Supabase y sincronizar con la nube
+    await _ensureSupabaseSession();
     final userId = _supabase.auth.currentUser?.id;
     if (isCloudConfigured && userId != null) {
       try {
@@ -192,13 +233,20 @@ class VaultSyncService {
             }
           }
         }
+        _updateSyncStatus(CloudSyncStatus.synced);
       } catch (e) {
         debugPrint('Aviso: modo sin conexión o error de red con Supabase: $e');
+        _updateSyncStatus(CloudSyncStatus.offline);
       }
+    } else {
+      _updateSyncStatus(CloudSyncStatus.offline);
     }
 
     _cachedItems = itemMap.values.toList()
       ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+
+    // Persistir siempre la versión actualizada en local para Offline-First
+    await _persistLocalEncryptedVault();
 
     // Sincronizar categorías personalizadas
     final savedCats = await _secureStorage.getCustomCategories(userEmail);
@@ -234,11 +282,6 @@ class VaultSyncService {
       key: _masterEncryptionKey,
     );
 
-    final encryptedTitle = await CryptoEngine.encrypt(
-      plainText: item.title,
-      key: _masterEncryptionKey,
-    );
-
     // 2. Actualizar caché en memoria
     final index = _cachedItems.indexWhere((e) => e.id == item.id);
     if (index >= 0) {
@@ -252,6 +295,7 @@ class VaultSyncService {
     await _persistLocalEncryptedVault();
 
     // 4. Si la nube está configurada y el usuario autenticado, enviar a Supabase
+    await _ensureSupabaseSession();
     final userId = _supabase.auth.currentUser?.id;
     if (isCloudConfigured && userId != null) {
       try {
@@ -266,8 +310,61 @@ class VaultSyncService {
           'version': item.version,
           'client_updated_at': item.updatedAt.toIso8601String(),
         });
+        _updateSyncStatus(CloudSyncStatus.synced);
       } catch (e) {
         debugPrint('Guardado localmente. La sincronización en la nube se reintentará al conectar: $e');
+        _updateSyncStatus(CloudSyncStatus.offline);
+      }
+    }
+  }
+
+  /// Guarda múltiples credenciales de forma eficiente en local y nube (ej. importación masiva TXT/Excel)
+  Future<void> saveItemsBulk(List<VaultItem> items) async {
+    if (items.isEmpty) return;
+
+    // 1. Actualizar caché en memoria
+    for (final item in items) {
+      final index = _cachedItems.indexWhere((e) => e.id == item.id);
+      if (index >= 0) {
+        _cachedItems[index] = item;
+      } else {
+        _cachedItems.insert(0, item);
+      }
+    }
+    _vaultItemsController.add(_cachedItems);
+
+    // 2. Persistir localmente de una sola vez
+    await _persistLocalEncryptedVault();
+
+    // 3. Enviar a Supabase en lote
+    await _ensureSupabaseSession();
+    final userId = _supabase.auth.currentUser?.id;
+    if (isCloudConfigured && userId != null) {
+      _updateSyncStatus(CloudSyncStatus.syncing);
+      try {
+        final List<Map<String, dynamic>> upsertRows = [];
+        for (final item in items) {
+          final enc = await CryptoEngine.encrypt(
+            plainText: item.toSensitiveJson(),
+            key: _masterEncryptionKey,
+          );
+          upsertRows.add({
+            'id': item.id,
+            'user_id': userId,
+            'payload_ciphertext': enc.ciphertextBase64,
+            'nonce': enc.nonceBase64,
+            'auth_tag': enc.authTagBase64,
+            'is_favorite': item.isFavorite,
+            'is_deleted': item.isDeleted,
+            'version': item.version,
+            'client_updated_at': item.updatedAt.toIso8601String(),
+          });
+        }
+        await _supabase.from('vault_items').upsert(upsertRows);
+        _updateSyncStatus(CloudSyncStatus.synced);
+      } catch (e) {
+        debugPrint('Guardado en lote en local. Nube pendiente: $e');
+        _updateSyncStatus(CloudSyncStatus.offline);
       }
     }
   }
@@ -281,6 +378,7 @@ class VaultSyncService {
 
       await _persistLocalEncryptedVault();
 
+      await _ensureSupabaseSession();
       final userId = _supabase.auth.currentUser?.id;
       if (isCloudConfigured && userId != null) {
         try {
@@ -344,6 +442,7 @@ class VaultSyncService {
 
   void dispose() {
     _realtimeSubscription?.unsubscribe();
+    _syncStatusController.close();
     _vaultItemsController.close();
     _categoriesController.close();
   }
